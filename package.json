@@ -1,0 +1,46 @@
+{
+  "name": "both",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "deploy:oracle": "hardhat run scripts/deploy-oracle.js --network local",
+    "deploy:market": "hardhat run scripts/deploy-market.js --network local",
+    "list:asset": "hardhat run scripts/list-asset.js --network local",
+    "deploy:sepolia:implementations": "hardhat run scripts/00_deploy-implementations.js --network sepolia",
+    "deploy:sepolia:compliance": "hardhat run scripts/01_deploy-compliance-proxy.js --network sepolia",
+    "deploy:sepolia:oracle": "hardhat run scripts/02_deploy-oracle.js --network sepolia",
+    "deploy:sepolia:tokens": "hardhat run scripts/03_create-token-proxies.js --network sepolia",
+    "deploy:sepolia:market": "hardhat run scripts/04_deploy-market-proxy.js --network sepolia",
+    "deploy:sepolia:list": "hardhat run scripts/05_list-tokens.js --network sepolia",
+    "oracle:bot": "node oracle-bot/bot.mjs",
+    "agent:server": "node backend/ai-agent-server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.1",
+    "ethers": "^6.15.0",
+    "express": "^5.2.1",
+    "node-fetch": "^3.3.2",
+    "yahoo-finance2": "^3.11.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
+    "hardhat": "^2.26.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.10",
+    "dotenv": "^17.2.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

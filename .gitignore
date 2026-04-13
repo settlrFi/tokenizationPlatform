@@ -1,0 +1,9 @@
+artifacts/
+node_modules/
+cache/
+package-lock.json
+typechain-types/
+deployments/
+.env
+data/ai-agent-history/
+vendor/
