@@ -114,7 +114,7 @@ module.exports = {
     }]
   },
   paths: {
-    sources: "NV{SRC}", 
+    sources: "./src", 
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts"

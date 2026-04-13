@@ -1,0 +1,17 @@
+{
+  "network": "sepolia",
+  "updatedAt": "2026-04-13T21:19:24.997Z",
+  "addresses": {
+    "fundImpl": "0x62303B1be3D3e27b996D2Ca396E8Db5B7bCeaa7C",
+    "equityImpl": "0xE17486615df8bCDb449471754919F841Fc1d2220",
+    "stableImpl": "0x620fDd156bE0c5029782BA3d69F53b57d1cdf437",
+    "factory": "0xd942894453cE1E1708aefccb3F8483BD7659879B",
+    "factoryOwner": "0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c",
+    "complianceRegistry": "0xf9d348B056780231dc023513276D464d1264Eb3C",
+    "complianceAdmin": "0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c",
+    "complianceOfficer": "0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c",
+    "oracle": "0x19c2f98980279F7D195f2aBBab6674fc6f23a503",
+    "oracleAdmin": "0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c",
+    "oracleUpdater": "0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c"
+  }
+}

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:sepolia": "vite --mode sepolia",
     "build": "vite build",
+    "build:sepolia": "vite build --mode sepolia",
     "lint": "eslint .",
     "preview": "vite preview"
   },

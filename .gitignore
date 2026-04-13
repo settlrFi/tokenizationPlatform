@@ -3,6 +3,5 @@ node_modules/
 cache/
 package-lock.json
 typechain-types/
-deployments/
 data/ai-agent-history/
 vendor/

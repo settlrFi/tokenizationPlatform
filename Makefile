@@ -39,9 +39,12 @@ local:
 sepolia:
 	@NETWORK=sepolia MAKE_TARGET=sepolia bash -lc '\
 		set -euo pipefail; \
+		if [ -f .env.sepolia.local ]; then set -a; . ./.env.sepolia.local; set +a; fi; \
 		read_env(){ \
-			node scripts/read-env.cjs .env "$$1"; \
+			node scripts/read-env.cjs .env.sepolia.local "$$1"; \
 		}; \
+		export ROOT_ENV_FILE=".env.sepolia.local"; \
+		export DAPP_ENV_FILE="dApp/.env.sepolia.local"; \
 		CFG="hardhat.config.js"; \
 		DIR1="./proxy_wallet/contracts/"; \
 		DIR2="./src"; \
@@ -78,6 +81,9 @@ sepolia:
 sepolia-relayer:
 	@NETWORK=sepolia bash -lc '\
 		set -euo pipefail; \
+		if [ -f .env.sepolia.local ]; then set -a; . ./.env.sepolia.local; set +a; fi; \
+		export ROOT_ENV_FILE=".env.sepolia.local"; \
+		export DAPP_ENV_FILE="dApp/.env.sepolia.local"; \
 		npx hardhat run --network "$$NETWORK" proxy_wallet/src/deploy.ts; \
 	'
 

@@ -1,7 +1,14 @@
 const fs = require("fs");
 const path = require("path");
 
-const DAPP_ENV_FILE = "dApp/.env";
+function rootEnvFile() {
+  return process.env.ROOT_ENV_FILE || ".env";
+}
+
+function dappEnvFile() {
+  return process.env.DAPP_ENV_FILE || "dApp/.env";
+}
+
 const VITE_KEY_MAP = {
   CHAIN_ID: ["VITE_CHAIN_ID"],
   MARKET_DEPLOY_BLOCK: ["VITE_MARKET_DEPLOY_BLOCK"],
@@ -45,19 +52,21 @@ function setEnvValue(key, value, envFile = ".env") {
 }
 
 function mirrorToDappEnv(key, value) {
+  const targetEnvFile = dappEnvFile();
   const viteKeys = VITE_KEY_MAP[key] || [];
   for (const viteKey of viteKeys) {
-    setEnvValue(viteKey, value, DAPP_ENV_FILE);
+    setEnvValue(viteKey, value, targetEnvFile);
   }
 }
 
 function envAddress(key, value, envFile = ".env") {
+  const targetEnvFile = envFile === ".env" ? rootEnvFile() : envFile;
   if (typeof value === "undefined") {
-    return readEnvValue(key, envFile);
+    return readEnvValue(key, targetEnvFile);
   }
 
-  setEnvValue(key, value, envFile);
-  if (envFile === ".env") mirrorToDappEnv(key, value);
+  setEnvValue(key, value, targetEnvFile);
+  if (targetEnvFile === rootEnvFile()) mirrorToDappEnv(key, value);
   return value;
 }
 
