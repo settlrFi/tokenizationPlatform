@@ -47,7 +47,6 @@ contract ComplianceRegistry is
         require(complianceOfficer != address(0), "Invalid officer");
 
         __AccessControl_init();
-        __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(COMPLIANCE_ROLE, complianceOfficer);

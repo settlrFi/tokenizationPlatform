@@ -1,8 +1,15 @@
-# Deploy Market
+# Tokenization Platform
 
-## OpenClaw Agent
+Piattaforma per tokenizzazione di asset con:
+- contratti Solidity upgradeable
+- dApp React/Vite
+- market permissioned
+- oracle bot
+- stack relayer/proxy wallet
 
-This repository now includes an OpenClaw-oriented workspace bootstrap:
+## Workspace Agent Files
+
+Il repository include file di bootstrap per l’agente workspace:
 - `SOUL.md`
 - `USER.md`
 - `MEMORY.md`
@@ -11,178 +18,190 @@ This repository now includes an OpenClaw-oriented workspace bootstrap:
 - `DAPP_RUNBOOK.md`
 - `HEARTBEAT.md`
 
-These files are intended to shape an embedded workspace agent so it can:
-- modify Solidity contracts and dApp code with repo-specific constraints
-- support localhost/Hardhat operational flows
-- explain concretely how to use each operator area of the dApp
+Servono a guidare un agente embedded su:
+- modifiche Solidity e dApp con vincoli repo-specifici
+- supporto ai flussi locali Hardhat
+- spiegazioni operative concrete della piattaforma
 
-Embedded chat backend:
+## Installazione
+
+Root:
+```bash
+npm i
+```
+
+dApp:
+```bash
+cd dApp
+npm i
+```
+
+## Flusso Locale
+
+Terminale 1, blockchain locale:
+```bash
+npx hardhat node
+```
+
+Terminale 2, bootstrap completo locale:
+```bash
+make local
+```
+
+Terminale 3, relayer server:
+```bash
+make server
+```
+
+### Cosa Fa `make local`
+
+Il target `make local`:
+- compila `proxy_wallet/contracts` e `src`
+- deploya implementation, compliance registry, oracle, token proxies e market su `localhost`
+- lista fund ed equities nel market
+- esegue `oracle-bot` una volta per seedare i prezzi
+- esegue il grant di `UPDATER_ROLE`
+- deploya lo stack `proxy_wallet`
+- assegna `INVENTORY_ROLE`
+
+### Prerequisiti `make local`
+
+Il target legge `.env`. Se `RPC_URL` non è valorizzata, usa come fallback:
+```bash
+http://127.0.0.1:8545
+```
+
+Esempio minimo:
+```bash
+RPC_URL="http://127.0.0.1:8545"
+PRIVATE_KEY="0x..."
+```
+
+## Oracle Bot
+
+Esecuzione manuale singola:
+```bash
+node oracle-bot/bot.mjs --once
+```
+
+Fallback supportati se Yahoo Finance non risponde:
+```bash
+PRICE_FETCH_TIMEOUT_MS=8000
+PRICE_FETCH_RETRIES=2
+EURUSD_FALLBACK=1.08
+PRICE_FALLBACKS="AAPL=200,MSFT=350,ISP.MI=7"
+```
+
+Sono supportati anche fallback puntuali per simbolo:
+```bash
+AAPL_PRICE=200
+MSFT_PRICE=350
+ISP_MI_PRICE=7
+```
+
+Nota:
+- `ISP.MI` usa un prezzo EUR che viene convertito in USD tramite `EURUSD`
+
+## dApp
+
+Avvio in sviluppo:
+```bash
+cd dApp
+npm run dev
+```
+
+Build:
+```bash
+cd dApp
+npm run build
+```
+
+## Backend Chat Workspace
+
+Avvio backend embedded chat:
 ```bash
 npm run agent:server
 OPENAI_API_KEY=... npm run agent:server
 ```
 
-Notes:
-- the dApp chat calls `POST /ai/workspace-agent/chat`
-- in dev, `dApp/vite.config.js` proxies `/ai/*` to `http://127.0.0.1:8787`
-- if `OPENAI_API_KEY` is set, the backend uses OpenAI; otherwise it falls back to local `codex`
-- for Codex fallback, run `codex login --device-auth` with the same OS user that starts the backend
+Note:
+- la dApp chiama `POST /ai/workspace-agent/chat`
+- in dev `dApp/vite.config.js` proxya `/ai/*` verso `http://127.0.0.1:8787`
+- se `OPENAI_API_KEY` è presente, il backend usa OpenAI
+- altrimenti va in fallback su `codex`
+- per il fallback Codex serve `codex login --device-auth` con lo stesso utente OS che avvia il backend
 
-Recommended prompt-loading order:
+## Deploy Sepolia
+
+Deploy completo contratti principali:
+```bash
+make sepolia
+```
+
+Deploy solo stack gasless/relayer:
+```bash
+make sepolia-relayer
+```
+
+Variabili richieste tipiche:
+```bash
+SEPOLIA_RPC_URL="https://..."
+SEPOLIA_PRIVATE_KEY="0x..."
+```
+
+Se l’updater oracle non coincide col deployer:
+```bash
+SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY="0x..."
+```
+
+Template disponibili:
+- `.env.sepolia.example`
+- `dApp/.env.sepolia.example`
+
+## Ngrok
+
+Installazione:
+```bash
+sudo snap install ngrok
+ngrok config add-authtoken <your-token>
+```
+
+Tunnel porta 5173:
+```bash
+ngrok http 5173
+```
+
+## Prompt Loading Order
+
+Ordine consigliato di lettura per l’agente:
 1. `SOUL.md`
 2. `USER.md`
 3. `MEMORY.md`
 4. `AGENTS.md`
 5. `TOOLS.md`
-6. `DAPP_RUNBOOK.md` when the user asks how to use the platform
+6. `DAPP_RUNBOOK.md` quando serve supporto operativo sulla piattaforma
 
-Install:
-```bash
-npm i
-```
+## Beacon Architecture
 
-Run local blockchain:
-```bash
-npx hardhat node
-```
+L’obiettivo è separare:
+- logica di business
+- stato dei singoli token
 
-In other terminal run:
-```bash
-make
-npx ts-node proxy_wallet/relayer/src/server.ts
-```
+in modo da consentire upgrade globali della logica senza cambiare gli indirizzi on-chain dei token.
 
-# dApp
+### Componenti
 
-Install:
-```bash
-cd dApp/
-npm i
-# To run
-npm run dev
-```
+1. `Implementation`
+   Contiene la logica del token.
+2. `Beacon`
+   Mantiene il puntatore all’implementation corrente.
+3. `BeaconProxy`
+   Un proxy per ogni token/fondo/share class, con storage proprio.
 
-# Public Site Online
+### Effetto
 
-Install ngrok
-```bash
-sudo snap install ngrok
-# put the token account
-ngrok config add-authtoken 35qZu3jq7iAyl8aW7rKYaJaCIX6_3YfYJH3ViyVrrLjt419Cy
-```
+Ogni proxy:
+- mantiene il proprio storage
+- delega la logica alla implementation puntata dal beacon
 
-Tunnel the port 5173 with ngrok:
-```bash
-ngrok http 5173
-```
-
-The link will be [repercussively-runtgenologic-jesica](https://repercussively-runtgenologic-jesica.ngrok-free.dev) or similar.
-
-
-
-
-# Beacon Architecture
-
-
-L’obiettivo è separare in modo netto:
-- **logica di business (regole, compliance, flussi regolamentari)**  
-- **stato dei singoli token (bilanci, lock, metadata, ruoli)**  
-
-consentendo **upgrade globali della logica** senza cambiare gli indirizzi on-chain delle singole “monete”.
-
----
-
-## Architettura generale
-
-Il sistema utilizza il **Beacon Proxy Pattern**, composto da tre elementi fondamentali:
-
-1. **Implementation (`SecurityToken`)**  
-   Contiene tutta la logica del token (ERC20, compliance, propose/authorize mint & burn, locking, LMT, ecc.).
-
-2. **Beacon (`UpgradeableBeacon`)**  
-   Contratto centrale che mantiene l’indirizzo dell’implementation corrente.
-
-3. **Proxy (`BeaconProxy`)**  
-   Un proxy per ogni token / fondo / share class.  
-   Ogni proxy:
-   - ha il proprio storage
-   - delega l’esecuzione delle funzioni all’implementation indicata dal beacon
-
-
----
-
-## Concetti chiave
-
-### Implementation
-- È **unica** per tutto il sistema.
-- Contiene solo **codice**, non dati persistenti.
-- È protetta con `_disableInitializers()` per evitare utilizzi diretti.
-
-### Beacon
-- Mantiene **un solo puntatore** alla implementation attiva.
-- L’upgrade globale avviene aggiornando questo puntatore.
-- È controllato da un owner (tipicamente multisig / timelock).
-
-### BeaconProxy
-- Ogni proxy rappresenta **un token distinto**.
-- Ha il proprio storage:
-  - bilanci
-  - ruoli
-  - registry
-  - metadata
-  - locking e LMT
-- È l’indirizzo da usare nel frontend, nel market e nei contratti esterni.
-
----
-
-## Flusso di deploy
-
-### 1. Deploy dell’implementation
-Si deploya una sola volta il contratto `SecurityToken`.
-
-const SecurityToken = await ethers.getContractFactory("SecurityToken");
-const implementation = await SecurityToken.deploy();
-
-### 1. Deploy del Beacon
-
-const Beacon = await ethers.getContractFactory("UpgradeableBeacon");
-const beacon = await Beacon.deploy(implementation.address);
-
-### Creazione di un nuovo token (BeaconProxy)
-
-const initData = SecurityToken.interface.encodeFunctionData(
-  "initialize",
-  [
-    "Fondo Azionario Europa",
-    "FAEUR",
-    admin,
-    complianceOfficer,
-    registry
-  ]
-);
-
-const BeaconProxy = await ethers.getContractFactory("BeaconProxy");
-const tokenProxy = await BeaconProxy.deploy(
-  beacon.address,
-  initData
-);
-
-
-### Come funzionano le chiamate
-
-Quando un utente chiama una funzione (es. proposeMint) sul proxy:
-
-1. La chiamata arriva al BeaconProxy
-
-2. Il proxy chiede al Beacon l’indirizzo dell’implementation
-
-3. Il proxy esegue delegatecall verso l’implementation
-
-4. Il codice viene eseguito usando lo storage del proxy
-
-5. Gli eventi vengono emessi dall’indirizzo del proxy
-
-
-### Aggiornamento globale della logica
-
-await beacon.upgradeTo(newImplementation.address);
+L’upgrade globale avviene aggiornando il beacon, non i singoli proxy.

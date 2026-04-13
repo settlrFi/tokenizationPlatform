@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import "./tokens/interfaces/IReferenceOracle.sol";
+import "./utils/ReentrancyGuardUpgradeable.sol";
 
 contract Market is
     Initializable,
@@ -119,7 +119,6 @@ contract Market is
         __AccessControlEnumerable_init();
         __ReentrancyGuard_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
 
         stable = IERC20(stable_);
         stableDecimals = IERC20Metadata(stable_).decimals();

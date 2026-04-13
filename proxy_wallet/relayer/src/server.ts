@@ -852,6 +852,13 @@ app.get("/relayerStatus", async (req, res) => {
     return res.json({
       relayer: relayer.address,
       chainId: net.chainId.toString(),
+      config: {
+        factory: FACTORY_ADDR ?? null,
+        bundler: BUNDLER_ADDR ?? null,
+        token: MUSD_TOKEN,
+        relayer: RELAYER_ADDR,
+        market: MARKET_ADDR ?? null,
+      },
       balances: {
         eth: eth.toString(),
         musd,

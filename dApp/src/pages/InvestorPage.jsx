@@ -775,6 +775,7 @@ export default function InvestorPage(props) {
   const [proxyNonce, setProxyNonce] = useState(0n);
   const [depositAmt, setDepositAmt] = useState("10");
   const [relayerBusy, setRelayerBusy] = useState(false);
+  const [relayerFactoryWarning, setRelayerFactoryWarning] = useState("");
 
   // assets
   const [assets, setAssets] = useState([]); // [{id, symbol, decimals, token}]
@@ -949,6 +950,42 @@ export default function InvestorPage(props) {
     refreshProxyWalletState(account);
   }, [account, refreshProxyWalletState]);
 
+  useEffect(() => {
+    let active = true;
+    if (!RELAYER_URL) return undefined;
+
+    (async () => {
+      try {
+        const payload = await fetch(`${RELAYER_URL}/relayerStatus`).then((r) =>
+          r.json()
+        );
+        const relayerFactory = payload?.config?.factory;
+        if (!active) return;
+
+        if (
+          relayerFactory &&
+          ethers.isAddress(relayerFactory) &&
+          FACTORY_ADDR &&
+          ethers.getAddress(relayerFactory) !== FACTORY_ADDR
+        ) {
+          setRelayerFactoryWarning(
+            `Factory mismatch: dApp=${FACTORY_ADDR}, relayer=${ethers.getAddress(
+              relayerFactory
+            )}. Riavvia la dApp dopo il deploy locale per ricaricare gli env.`
+          );
+        } else {
+          setRelayerFactoryWarning("");
+        }
+      } catch {
+        if (active) setRelayerFactoryWarning("");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [RELAYER_URL, FACTORY_ADDR]);
+
   async function createProxyWalletViaRelayer() {
     setStatus("");
     if (!account) return setStatus("⚠️ connect wallet first.");
@@ -976,8 +1013,31 @@ export default function InvestorPage(props) {
         await provider.waitForTransaction(parsed.txHash);
       }
 
+      if (parsed?.wallet && ethers.isAddress(parsed.wallet) && provider) {
+        const walletAddr = ethers.getAddress(parsed.wallet);
+        setProxyWallet(walletAddr);
+        const code = await provider.getCode(walletAddr);
+        const deployed = !!code && code !== "0x";
+        setProxyDeployed(deployed);
+        if (deployed) {
+          const w = new Contract(walletAddr, PROXY_WALLET_READ_ABI, provider);
+          const n = await w.nonce();
+          setProxyNonce(BigInt(n));
+        } else {
+          setProxyNonce(0n);
+        }
+      }
+
       setStatus(parsed?.alreadyDeployed ? "Already deployed" : "Created");
-      await refreshProxyWalletState(account);
+      try {
+        await refreshProxyWalletState(account);
+      } catch (refreshError) {
+        const msg =
+          refreshError?.shortMessage ||
+          refreshError?.message ||
+          String(refreshError);
+        setStatus(`Created, but local ProxyWallet config looks stale. ${msg}`);
+      }
       await refreshWallet();
     } catch (e) {
       const msg = e?.shortMessage || e?.message || String(e);
@@ -2129,6 +2189,11 @@ useEffect(() => {
                 {proxyNonce?.toString?.() ?? "0"}
               </span>
             </div>
+            {relayerFactoryWarning ? (
+              <div className="text-amber-300 whitespace-pre-wrap">
+                {relayerFactoryWarning}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2">

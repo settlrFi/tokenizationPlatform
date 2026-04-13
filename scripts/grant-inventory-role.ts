@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { getAddress } from "ethers";
 
 const MARKET_ABI = [
   "function INVENTORY_ROLE() view returns (bytes32)",
@@ -8,9 +9,14 @@ const MARKET_ABI = [
 
 async function main() {
   const marketAddress = process.env.MARKET_ADDRESS;
-  const maker = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
+  if (!marketAddress) throw new Error("Missing MARKET_ADDRESS");
 
-  const [admin, compliance] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  if (!signers.length) throw new Error("No signer available");
+
+  const admin = signers[0];
+  const compliance = signers[1] ?? admin;
+  const maker = getAddress(process.env.MAKER_ADDRESS ?? "0x90F79bf6EB2c4f870365E785982E1f101E93b906");
   const market = new ethers.Contract(marketAddress, MARKET_ABI, admin);
 
   const role = await market.INVENTORY_ROLE();
@@ -30,8 +36,8 @@ async function main() {
   await reg.connect(compliance).setWhitelist(maker, true);
   await reg.connect(compliance).setKycExpiry(maker, kyc);
 
-  await reg.connect(compliance).setWhitelist(market, true);
-  await reg.connect(compliance).setKycExpiry(market, kyc);
+  await reg.connect(compliance).setWhitelist(marketAddress, true);
+  await reg.connect(compliance).setKycExpiry(marketAddress, kyc);
 }
 
 main().catch((e) => {

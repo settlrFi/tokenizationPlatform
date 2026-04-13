@@ -42,6 +42,16 @@ function short(a: string) {
 }
 
 type TokenInfo = { address: string; symbol: string; decimals: number; balanceRaw: bigint };
+type RelayerStatusPayload = {
+  chainId?: string | number;
+  config?: {
+    factory?: string | null;
+    bundler?: string | null;
+    token?: string | null;
+    relayer?: string | null;
+    market?: string | null;
+  };
+};
 
 
 async function waitForReceipt(
@@ -106,6 +116,7 @@ export default function ClientPage() {
   const [proxyWallet, setProxyWallet] = useState<string>("");
   const [walletDeployed, setWalletDeployed] = useState<boolean>(false);
   const [walletNonce, setWalletNonce] = useState<bigint>(0n);
+  const [factoryWarning, setFactoryWarning] = useState<string>("");
 
   // portfolio
   const [ethBal, setEthBal] = useState<bigint>(0n);
@@ -189,6 +200,29 @@ export default function ClientPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, account]);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const payload = (await fetch(`${RELAYER_URL}/relayerStatus`).then((r) => r.json())) as RelayerStatusPayload;
+        const relayerFactory = payload?.config?.factory;
+        if (!active) return;
+        if (relayerFactory && getAddress(relayerFactory) !== FACTORY) {
+          setFactoryWarning(
+            `Factory mismatch: dApp=${FACTORY}, relayer=${getAddress(relayerFactory)}. Restart the proxy_wallet dApp after running deploy.`
+          );
+        } else {
+          setFactoryWarning("");
+        }
+      } catch {
+        if (active) setFactoryWarning("");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function refreshPortfolio() {
     if (!provider || !account) return;
 
@@ -236,8 +270,27 @@ export default function ClientPage() {
         if (provider) await provider.waitForTransaction(parsed.txHash);
       }
 
+      if (parsed.wallet && isAddress(parsed.wallet)) {
+        const wallet = getAddress(parsed.wallet);
+        setProxyWallet(wallet);
+        const code = provider ? await provider.getCode(wallet) : "0x";
+        const deployed = !!code && code !== "0x";
+        setWalletDeployed(deployed);
+        if (deployed && provider) {
+          const w = new Contract(wallet, PROXY_WALLET_READ_ABI, provider);
+          setWalletNonce(BigInt(await w.nonce()));
+        }
+      }
+
       setStatus(parsed.alreadyDeployed ? "Already deployed" : "Created");
-      await refreshWalletState(account);
+      try {
+        await refreshWalletState(account);
+      } catch (refreshError: any) {
+        const detail = refreshError?.message ?? String(refreshError);
+        setStatus(
+          `Created, but local factory config looks stale. ${detail}`
+        );
+      }
       await refreshPortfolio();
     } catch (e: any) {
       setStatus(e?.message ?? String(e));
@@ -591,6 +644,15 @@ export default function ClientPage() {
             </div>
 
             <div className="sep" />
+
+            {factoryWarning ? (
+              <>
+                <div className="small" style={{ color: "#f59e0b", whiteSpace: "pre-wrap" }}>
+                  {factoryWarning}
+                </div>
+                <div className="sep" />
+              </>
+            ) : null}
 
             <div className="kv">
               <div className="label">Factory</div>
