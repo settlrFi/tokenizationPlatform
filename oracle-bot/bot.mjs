@@ -13,6 +13,7 @@ const {
   SYMBOLS = 'AAPL,MSFT,ISP.MI',
   UPDATE_INTERVAL_MS = '15000',
   MAX_PRICE_AGE_S = '120',
+  ENFORCE_PRICE_AGE = 'false',
   PRICE_FETCH_TIMEOUT_MS = '8000',
   PRICE_FETCH_RETRIES = '2',
   EURUSD_FALLBACK = '',
@@ -28,6 +29,7 @@ const baseWallet = new Wallet(PRIVATE_KEY, provider);
 const wallet = new NonceManager(baseWallet);
 const FETCH_TIMEOUT_MS = Number(PRICE_FETCH_TIMEOUT_MS);
 const FETCH_RETRIES = Number(PRICE_FETCH_RETRIES);
+const SHOULD_ENFORCE_PRICE_AGE = String(ENFORCE_PRICE_AGE).toLowerCase() === 'true';
 
 const oracleAbi = [
   'function setPrice(bytes32 id, uint256 price, uint64 timestamp) external',
@@ -212,7 +214,7 @@ async function pushPrice(symbol, oracleDecimals, eurUsdInfo) {
   const { price, ts, source } = await fetchQuote(symbol);
   const now = Math.floor(Date.now() / 1000);
 
-  if (now - ts > Number(MAX_PRICE_AGE_S) && source !== 'fallback-env') {
+  if (SHOULD_ENFORCE_PRICE_AGE && now - ts > Number(MAX_PRICE_AGE_S) && source !== 'fallback-env') {
     throw new Error(`Stale market price for ${symbol}: age=${now - ts}s`);
   }
 
