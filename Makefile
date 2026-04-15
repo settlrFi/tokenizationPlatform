@@ -1,4 +1,4 @@
-.PHONY: all local sepolia sepolia-resume sepolia-relayer server
+.PHONY: all local sepolia sepolia-resume sepolia-relayer server server\:sepolia
 
 all: local
 
@@ -82,3 +82,48 @@ sepolia-relayer:
 server:
 	npx ts-node proxy_wallet/relayer/src/server.ts
 	#HOST=192.168.253.163 ALLOWED_ORIGINS=http://192.168.253.163:5173 PORT=3000 npx ts-node proxy_wallet/relayer/src/server.ts
+
+server\:sepolia:
+	@bash -lc '\
+		set -euo pipefail; \
+		read_env(){ \
+			node scripts/read-env.cjs "$$1" "$$2"; \
+		}; \
+		ROOT_ENV=".env"; \
+		SEPOLIA_ENV=".env.sepolia.local"; \
+		get_first(){ \
+			for key in "$$@"; do \
+				if [ "$$key" = "__ROOT__" ]; then continue; fi; \
+				if [ -f "$$SEPOLIA_ENV" ]; then \
+					val="$$(read_env "$$SEPOLIA_ENV" "$$key")"; \
+					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+				fi; \
+				if [ -f "$$ROOT_ENV" ]; then \
+					val="$$(read_env "$$ROOT_ENV" "$$key")"; \
+					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+				fi; \
+			done; \
+			return 1; \
+		}; \
+		export RPC_URL="$${SEPOLIA_RPC_URL:-$${RPC_URL:-$$(get_first SEPOLIA_RPC_URL RPC_URL || true)}}"; \
+		export RELAYER_PRIVATE_KEY="$${SEPOLIA_PRIVATE_KEY:-$$(get_first SEPOLIA_PRIVATE_KEY RELAYER_PRIVATE_KEY PRIVATE_KEY || true)}"; \
+		export FACTORY="$${FACTORY:-$$(get_first FACTORY || true)}"; \
+		export BUNDLER="$${BUNDLER:-$$(get_first BUNDLER || true)}"; \
+		export TOKEN="$${TOKEN:-$$(get_first TOKEN STABLE_ADDRESS || true)}"; \
+		export RELAYER_ADDR="$${RELAYER_ADDR:-$$(get_first RELAYER_ADDR ORACLE_UPDATER_ADDRESS || true)}"; \
+		export FIXED_FEE="$${FIXED_FEE:-$$(get_first FIXED_FEE VITE_FIXED_FEE_RAW || true)}"; \
+		if [ -z "$$RELAYER_ADDR" ] && [ -n "$$RELAYER_PRIVATE_KEY" ]; then \
+			export RELAYER_ADDR="$$(node -e "const { Wallet } = require('ethers'); console.log(new Wallet(process.argv[1]).address)" "$$RELAYER_PRIVATE_KEY")"; \
+		fi; \
+		export ALLOWED_ORIGINS="$${ALLOWED_ORIGINS:-http://localhost:5173}"; \
+		export HOST="$${HOST:-0.0.0.0}"; \
+		export PORT="$${PORT:-3000}"; \
+		test -n "$$RPC_URL" || { echo "Missing SEPOLIA_RPC_URL (or RPC_URL)"; exit 1; }; \
+		test -n "$$RELAYER_PRIVATE_KEY" || { echo "Missing RELAYER_PRIVATE_KEY or SEPOLIA_PRIVATE_KEY"; exit 1; }; \
+		test -n "$${FACTORY:-}" || { echo "Missing FACTORY for proxy wallet relayer"; exit 1; }; \
+		test -n "$${BUNDLER:-}" || { echo "Missing BUNDLER for proxy wallet relayer"; exit 1; }; \
+		test -n "$${TOKEN:-}" || { echo "Missing TOKEN for proxy wallet relayer"; exit 1; }; \
+		test -n "$${RELAYER_ADDR:-}" || { echo "Missing RELAYER_ADDR for proxy wallet relayer"; exit 1; }; \
+		test -n "$${FIXED_FEE:-}" || { echo "Missing FIXED_FEE for proxy wallet relayer"; exit 1; }; \
+		npx ts-node proxy_wallet/relayer/src/server.ts; \
+	'

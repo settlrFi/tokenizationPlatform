@@ -1349,6 +1349,32 @@ export default function InvestorPage(props) {
         }
       }
 
+      if (!ids.length) {
+        try {
+          const logAddr = MARKET || market?.target;
+          if (logAddr) {
+            const topic0 = ethers.id("AssetListed(bytes32,address,string)");
+            const logs = await provider.getLogs({
+              address: logAddr,
+              topics: [topic0],
+              fromBlock: 0n,
+              toBlock: "latest",
+            });
+            const seen = new Set();
+            const out = [];
+            for (const lg of logs) {
+              const id = lg.topics?.[1];
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              out.push(id);
+            }
+            ids = out;
+          }
+        } catch {
+          ids = [];
+        }
+      }
+
       const ZERO_ID = ethers.ZeroHash ?? `0x${"0".repeat(64)}`;
       const uniq = Array.from(new Set((ids || []).map((x) => String(x)))).filter(
         (id) => id !== ZERO_ID
