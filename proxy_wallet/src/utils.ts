@@ -1,10 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const ENV_FILENAME = ".env";
-const envPath = path.resolve(process.cwd(), ENV_FILENAME);
+const networkName = process.env.HARDHAT_NETWORK;
+const envFilename = networkName ? `.env.${networkName}.local` : ".env";
+const dappEnvFilename = networkName ? `.env.${networkName}.local` : ".env";
+const envPath = path.resolve(process.cwd(), envFilename);
 const proxyWalletDappEnvPath = path.resolve(process.cwd(), "proxy_wallet/dApp/.env.local");
-const rootDappEnvPath = path.resolve(process.cwd(), "dApp/.env");
+const rootDappEnvPath = path.resolve(process.cwd(), "dApp", dappEnvFilename);
 const viteKeyMap: Record<string, string[]> = {
   FACTORY: ["VITE_FACTORY"],
   BUNDLER: ["VITE_BUNDLER"],
@@ -38,6 +40,11 @@ function upsertEnv(filePath: string, key: string, value: string): void {
 export default function envAddress(key: string, address: string): void {
   upsertEnv(envPath, key, address);
 
+  // Keep the generic root .env in sync for localhost flows even when writing network files.
+  if (envFilename !== ".env") {
+    upsertEnv(path.resolve(process.cwd(), ".env"), key, address);
+  }
+
   const viteKeys = viteKeyMap[key] || [];
   for (const viteKey of viteKeys) {
     try {
@@ -49,6 +56,13 @@ export default function envAddress(key: string, address: string): void {
       upsertEnv(rootDappEnvPath, viteKey, address);
     } catch {
       // keep root env as source of truth even if main dApp env is absent
+    }
+    if (dappEnvFilename !== ".env") {
+      try {
+        upsertEnv(path.resolve(process.cwd(), "dApp/.env"), viteKey, address);
+      } catch {
+        // keep network-specific env as source of truth even if generic dApp env is absent
+      }
     }
   }
 }

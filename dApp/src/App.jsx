@@ -778,8 +778,8 @@ export default function App() {
                   <AlertDescription className="flex items-start gap-3 text-sm">
                     <AlertTriangle className="h-4 w-4 mt-0.5" />
                     <div>
-                      Sei connesso alla chain <b>{chainId}</b>, ma la dApp è configurata per <b>{cfg.chainId}</b>.
-                      Cambia network in MetaMask oppure aggiorna <code>VITE_CHAIN_ID</code>.
+                      You are connected to chain <b>{chainId}</b>, but the dApp is configured for <b>{cfg.chainId}</b>.
+                      Switch network in MetaMask or update <code>VITE_CHAIN_ID</code>.
                     </div>
                   </AlertDescription>
                 </Alert>
