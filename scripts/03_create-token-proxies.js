@@ -58,34 +58,42 @@ async function main() {
   const { admin, complianceOfficer, depositary, platform, treasury, corpActionOperator } = runtime;
 
   const factory = await ethers.getContractAt("SecurityTokenBeaconFactory", dep.factory, admin);
+  let stableProxy = dep.stable;
+  let fundProxy = dep.fund;
 
   // ---------- Stable ----------
-  const Stable = await ethers.getContractFactory("StableToken", admin);
-  const stableInit = Stable.interface.encodeFunctionData("initializeStable", [
-    "Stable DLT",
-    "sDLT",
-    admin.address,
-    complianceOfficer.address,
-    dep.complianceRegistry,
-    dep.oracle,
-    treasury.address,
-    "Peg: 1.00 (reference oracle)",
-  ]);
+  if (!stableProxy) {
+    const Stable = await ethers.getContractFactory("StableToken", admin);
+    const stableInit = Stable.interface.encodeFunctionData("initializeStable", [
+      "Stable DLT",
+      "sDLT",
+      admin.address,
+      complianceOfficer.address,
+      dep.complianceRegistry,
+      dep.oracle,
+      treasury.address,
+      "Peg: 1.00 (reference oracle)",
+    ]);
 
-  const stableProxy = await createProxy(factory, await factory.TYPE_STABLE(), stableInit);
+    stableProxy = await createProxy(factory, await factory.TYPE_STABLE(), stableInit);
+    saveDeployments(network.name, { stable: stableProxy });
+  }
 
   // ---------- Fund ----------
-  const Fund = await ethers.getContractFactory("FundToken", admin);
-  const fundInit = Fund.interface.encodeFunctionData("initializeFund", [
-    "DLT Fund",
-    "fDLT",
-    admin.address,
-    complianceOfficer.address,
-    dep.complianceRegistry,
-    dep.oracle,
-  ]);
+  if (!fundProxy) {
+    const Fund = await ethers.getContractFactory("FundToken", admin);
+    const fundInit = Fund.interface.encodeFunctionData("initializeFund", [
+      "DLT Fund",
+      "fDLT",
+      admin.address,
+      complianceOfficer.address,
+      dep.complianceRegistry,
+      dep.oracle,
+    ]);
 
-  const fundProxy = await createProxy(factory, await factory.TYPE_FUND(), fundInit);
+    fundProxy = await createProxy(factory, await factory.TYPE_FUND(), fundInit);
+    saveDeployments(network.name, { fund: fundProxy });
+  }
 
   // ---------- Equities  ----------
   const Equity = await ethers.getContractFactory("EquityToken", admin);
@@ -96,9 +104,14 @@ async function main() {
     { symbolText: "ISP.MI", name: "Intesa Sanpaolo",      erc20Name: "Tokenized Intesa Sanpaolo",   erc20Symbol: "tISP_MI" },
   ];
 
-  const equityProxies = {};
+  const equityProxies = { ...(dep.equities || {}) };
 
   for (const e of EQUITIES) {
+    if (equityProxies[e.symbolText]) {
+      envAddress(`${envKeySymbol(e.symbolText)}_ADDRESS`, equityProxies[e.symbolText]);
+      continue;
+    }
+
     const meta = {
       issuerName: e.name,
       isin: "N/A",
@@ -119,6 +132,7 @@ async function main() {
 
     const proxy = await createProxy(factory, await factory.TYPE_EQUITY(), equityInit);
     equityProxies[e.symbolText] = proxy;
+    saveDeployments(network.name, { equities: equityProxies });
 
     // env like old scripts: AAPL_ADDRESS=...
     envAddress(`${envKeySymbol(e.symbolText)}_ADDRESS`, proxy);

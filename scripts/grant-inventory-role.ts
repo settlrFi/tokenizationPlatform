@@ -1,5 +1,6 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { getAddress } from "ethers";
+const { saveDeployments } = require("./lib/deployments");
 
 const MARKET_ABI = [
   "function INVENTORY_ROLE() view returns (bytes32)",
@@ -38,6 +39,8 @@ async function main() {
 
   await reg.connect(compliance).setWhitelist(marketAddress, true);
   await reg.connect(compliance).setKycExpiry(marketAddress, kyc);
+
+  saveDeployments(network.name, { inventoryBootstrapDone: true });
 }
 
 main().catch((e) => {

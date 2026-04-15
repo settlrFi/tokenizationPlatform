@@ -1,7 +1,12 @@
 const hre = require("hardhat");
 const { parseUnits, zeroPadValue } = require("ethers");
-const { loadDeployments } = require("./lib/deployments");
+const { loadDeployments, saveDeployments } = require("./lib/deployments");
 const { getRuntime, requireSigner } = require("./lib/runtime");
+
+async function isListed(market, id) {
+  const asset = await market.assets(id);
+  return Boolean(asset?.listed ?? asset?.[3]);
+}
 
 async function main() {
   const { ethers, network } = hre;
@@ -26,13 +31,17 @@ async function main() {
   const fundDecimals = await fundToken.decimals();
   const fundId = zeroPadValue(dep.fund, 32);
 
-  await (await market.listAsset(
-    fundId,
-    dep.fund,
-    "FDLT",
-    Number(fundDecimals),
-    parseUnits("1", Number(fundDecimals))
-  )).wait();
+  if (!(await isListed(market, fundId))) {
+    await (await market.listAsset(
+      fundId,
+      dep.fund,
+      "FDLT",
+      Number(fundDecimals),
+      parseUnits("1", Number(fundDecimals))
+    )).wait();
+  } else {
+    console.log("Fund already listed:", { fund: dep.fund, id: fundId });
+  }
 
   await (await oracle.setPrice(
     fundId,
@@ -52,13 +61,17 @@ async function main() {
 
     const eqId = zeroPadValue(tokenAddr, 32);
 
-    await (await market.listAsset(
-      eqId,
-      tokenAddr,
-      symbolText,
-      Number(eqDecimals),
-      parseUnits("0", Number(eqDecimals))
-    )).wait();
+    if (!(await isListed(market, eqId))) {
+      await (await market.listAsset(
+        eqId,
+        tokenAddr,
+        symbolText,
+        Number(eqDecimals),
+        parseUnits("0", Number(eqDecimals))
+      )).wait();
+    } else {
+      console.log("Equity already listed:", { symbolText, token: tokenAddr, id: eqId });
+    }
 
     console.log("Equity listed:", { symbolText, token: tokenAddr, id: eqId });
   }
@@ -73,6 +86,8 @@ async function main() {
     )).wait();
     console.log("Stable peg seeded:", { stable: dep.stable, id: stId });
   }
+
+  saveDeployments(network.name, { listingsSeeded: true });
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

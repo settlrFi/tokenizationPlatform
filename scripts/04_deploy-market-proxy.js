@@ -13,6 +13,16 @@ async function main() {
   const runtime = await getRuntime(hre);
   const { admin, maker } = runtime;
 
+  if (dep.market) {
+    envAddress("MARKET_ADDRESS", dep.market);
+    if (dep.marketDeployBlock) {
+      envAddress("MARKET_DEPLOY_BLOCK", String(dep.marketDeployBlock));
+    }
+    console.log("Market (proxy) already deployed:", dep.market);
+    console.log(dep);
+    return;
+  }
+
   const feeBps = 30;        // 0.30%
   const maxStaleness = 120; // seconds
 

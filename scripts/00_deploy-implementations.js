@@ -1,10 +1,18 @@
 const hre = require("hardhat");
 const envAddress = require("./utils");
-const { saveDeployments } = require("./lib/deployments");
+const { loadDeployments, saveDeployments } = require("./lib/deployments");
 
 async function main() {
   const { ethers, network } = hre;
   const [admin] = await ethers.getSigners();
+  const dep = loadDeployments(network.name);
+
+  if (dep.fundImpl && dep.equityImpl && dep.stableImpl && dep.factory) {
+    envAddress("FACTORY_ADDRESS", dep.factory);
+    console.log("Implementations + Factory already deployed");
+    console.log(dep);
+    return;
+  }
 
   const FundToken = await ethers.getContractFactory("FundToken", admin);
   const fundImpl = await FundToken.deploy();

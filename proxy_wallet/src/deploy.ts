@@ -1,34 +1,50 @@
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
 import envAddress from "./utils";
 
+const { loadDeployments, saveDeployments } = require("../../scripts/lib/deployments");
+
 async function main() {
-  const [deployer, , depositary] = await ethers.getSigners();
+  const [deployer, , depositarySigner] = await ethers.getSigners();
+  const depositary = depositarySigner ?? deployer;
+  const dep = loadDeployments(hre.network.name);
 
   envAddress("RELAYER_ADDR",deployer.address);
   console.log("Deployer:", deployer.address);
 
   // 1) Deploy implementation (ProxyWallet)
-  const ProxyWallet = await ethers.getContractFactory("ProxyWallet");
-  const impl = await ProxyWallet.deploy();
-  await impl.waitForDeployment();
-  const implAddr = await impl.getAddress();
+  let implAddr = dep.proxyWalletImpl;
+  if (!implAddr) {
+    const ProxyWallet = await ethers.getContractFactory("ProxyWallet");
+    const impl = await ProxyWallet.deploy();
+    await impl.waitForDeployment();
+    implAddr = await impl.getAddress();
+    saveDeployments(hre.network.name, { proxyWalletImpl: implAddr });
+  }
   
   console.log("ProxyWallet impl:", implAddr);
 
   // 2) Deploy factory
-  const Factory = await ethers.getContractFactory("ProxyWalletFactory");
-  const factory = await Factory.deploy(implAddr);
-  await factory.waitForDeployment();
-  const factoryAddr = await factory.getAddress();
+  let factoryAddr = dep.proxyWalletFactory;
+  if (!factoryAddr) {
+    const Factory = await ethers.getContractFactory("ProxyWalletFactory");
+    const factory = await Factory.deploy(implAddr);
+    await factory.waitForDeployment();
+    factoryAddr = await factory.getAddress();
+    saveDeployments(hre.network.name, { proxyWalletFactory: factoryAddr });
+  }
 
   envAddress("FACTORY", factoryAddr);
   console.log("Factory:", factoryAddr);
 
 
-  const Bundler = await ethers.getContractFactory("RelayBundler");
-  const bundler = await Bundler.deploy();
-  await bundler.waitForDeployment();
-  const bundlerAddr = await bundler.getAddress();
+  let bundlerAddr = dep.relayBundler;
+  if (!bundlerAddr) {
+    const Bundler = await ethers.getContractFactory("RelayBundler");
+    const bundler = await Bundler.deploy();
+    await bundler.waitForDeployment();
+    bundlerAddr = await bundler.getAddress();
+    saveDeployments(hre.network.name, { relayBundler: bundlerAddr });
+  }
 
   envAddress("BUNDLER", bundlerAddr);
   console.log("RelayBundler:", bundlerAddr);
@@ -39,6 +55,11 @@ async function main() {
   const tokenAddr = await token.getAddress();
   envAddress("TOKEN", tokenAddr);
   console.log("Stable token (TOKEN):", tokenAddr);
+
+  if (dep.proxyWalletBootstrapDone) {
+    console.log("Proxy wallet bootstrap already completed");
+    return;
+  }
 
   const userAddr = process.env.OWNER ?? deployer.address;
 
@@ -57,16 +78,14 @@ async function main() {
     const tx2 = await (token as any).mint(deployer.address, initialRelayer);
     await tx2.wait();
     console.log(`Minted to RELAYER (${deployer.address}):`, initialRelayer.toString());
+    saveDeployments(hre.network.name, { proxyWalletBootstrapDone: true });
     return;
   }
 
   if (!authorizeMintLike) {
     console.log("Token bootstrap skipped: no mint/authorizeMint function exposed.");
+    saveDeployments(hre.network.name, { proxyWalletBootstrapDone: true });
     return;
-  }
-
-  if (!depositary) {
-    throw new Error("Missing depositary signer required for authorizeMint bootstrap");
   }
 
   const depositaryToken = token.connect(depositary);
@@ -80,6 +99,7 @@ async function main() {
   const tx2 = await (depositaryToken as any).authorizeMint(deployer.address, initialRelayer, relayerOrderId);
   await tx2.wait();
   console.log(`Authorized mint to RELAYER (${deployer.address}):`, initialRelayer.toString());
+  saveDeployments(hre.network.name, { proxyWalletBootstrapDone: true });
 }
 
 main().catch((e) => {

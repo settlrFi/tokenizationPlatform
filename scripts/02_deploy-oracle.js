@@ -1,21 +1,42 @@
 const hre = require("hardhat");
 const envAddress = require("./utils");
-const { saveDeployments } = require("./lib/deployments");
+const { loadDeployments, saveDeployments } = require("./lib/deployments");
 const { getRuntime } = require("./lib/runtime");
 
 async function main() {
   const { ethers, network } = hre;
+  const dep = loadDeployments(network.name);
   const runtime = await getRuntime(hre);
   const { admin, oracleUpdater } = runtime;
 
-  const Oracle = await ethers.getContractFactory("ReferenceOracle", admin);
-  const oracle = await Oracle.deploy(8, admin.address); // decimals=8
-  await oracle.waitForDeployment();
+  let oracleAddr = dep.oracle;
+  let oracle;
 
-  const oracleAddr = await oracle.getAddress();
+  if (oracleAddr) {
+    oracle = await ethers.getContractAt("ReferenceOracle", oracleAddr, admin);
+    console.log("ReferenceOracle already deployed:", oracleAddr);
+  } else {
+    const Oracle = await ethers.getContractFactory("ReferenceOracle", admin);
+    oracle = await Oracle.deploy(8, admin.address); // decimals=8
+    await oracle.waitForDeployment();
+    oracleAddr = await oracle.getAddress();
+
+    saveDeployments(network.name, {
+      oracle: oracleAddr,
+      oracleAdmin: admin.address,
+      oracleUpdater: oracleUpdater.address,
+      oracleDecimals: 8,
+    });
+  }
+
   const UPDATER_ROLE = await oracle.UPDATER_ROLE();
+  const hasUpdaterRole = await oracle.hasRole(UPDATER_ROLE, oracleUpdater.address);
 
-  await (await oracle.grantRole(UPDATER_ROLE, oracleUpdater.address)).wait();
+  if (!hasUpdaterRole) {
+    await (await oracle.grantRole(UPDATER_ROLE, oracleUpdater.address)).wait();
+  } else {
+    console.log("UPDATER already granted to:", oracleUpdater.address);
+  }
 
   const out = saveDeployments(network.name, {
     oracle: oracleAddr,

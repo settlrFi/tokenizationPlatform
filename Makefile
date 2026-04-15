@@ -1,4 +1,4 @@
-.PHONY: all local sepolia sepolia-relayer server
+.PHONY: all local sepolia sepolia-resume sepolia-relayer server
 
 all: local
 
@@ -43,7 +43,7 @@ sepolia:
 		DIR2="./src"; \
 		ORACLE_RPC="$${SEPOLIA_RPC_URL:-$${RPC_URL:-$$(read_env SEPOLIA_RPC_URL)}}"; \
 		if [ -z "$$ORACLE_RPC" ]; then ORACLE_RPC="$$(read_env RPC_URL)"; fi; \
-		ORACLE_PK="$${ORACLE_BOT_PRIVATE_KEY:-$${SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY:-$${SEPOLIA_PRIVATE_KEY:-$${PRIVATE_KEY:-$$(read_env ORACLE_BOT_PRIVATE_KEY)}}}}}"; \
+		ORACLE_PK="$${ORACLE_BOT_PRIVATE_KEY:-$${SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY:-$${SEPOLIA_PRIVATE_KEY:-$${PRIVATE_KEY:-$$(read_env ORACLE_BOT_PRIVATE_KEY)}}}}"; \
 		if [ -z "$$ORACLE_PK" ]; then ORACLE_PK="$$(read_env SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY)"; fi; \
 		if [ -z "$$ORACLE_PK" ]; then ORACLE_PK="$$(read_env SEPOLIA_PRIVATE_KEY)"; fi; \
 		if [ -z "$$ORACLE_PK" ]; then ORACLE_PK="$$(read_env PRIVATE_KEY)"; fi; \
@@ -66,6 +66,8 @@ sepolia:
 		HARDHAT_SOURCES="$$DIR2" npx hardhat run --network "$$NETWORK" scripts/grant-inventory-role.ts; \
 		echo "Sepolia deploy completed. If you also need the gasless proxy wallet stack, run: make sepolia-relayer"; \
 	'
+
+sepolia-resume: sepolia
 
 sepolia-relayer:
 	@NETWORK=sepolia bash -lc '\
