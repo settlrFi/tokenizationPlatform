@@ -12,6 +12,8 @@ const {
   ETHERSCAN_API_KEY,
 } = process.env;
 
+const hardhatSources = process.env.HARDHAT_SOURCES || "./src";
+
 function parseAccounts(...rawValues) {
   const seen = new Set();
   return rawValues
@@ -114,7 +116,7 @@ module.exports = {
     }]
   },
   paths: {
-    sources: "NV{SRC}", 
+    sources: hardhatSources,
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts"
