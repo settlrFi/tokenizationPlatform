@@ -114,14 +114,14 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
   function pickTimestamp() {
     if (tsMode === "custom") {
       const t = Number(String(tsCustom || "").trim());
-      if (!Number.isFinite(t) || t <= 0) throw new Error("Timestamp custom non valido (in secondi).");
+      if (!Number.isFinite(t) || t <= 0) throw new Error("Custom timestamp not valid (seconds).");
       return t;
     }
     return Math.floor(Date.now() / 1000);
   }
 
   async function readIndexRayStrict() {
-    if (!fund) throw new Error("Fund non inizializzato (provider/address).");
+    if (!fund) throw new Error("Fund not initialized (provider/address).");
     try {
       return await fund.indexRay();
     } catch (e1) {
@@ -131,15 +131,15 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
         const msg =
           e2?.shortMessage || e2?.reason || e2?.message ||
           e1?.shortMessage || e1?.reason || e1?.message || "unknown error";
-        throw new Error(`Impossibile leggere indexRay() / currentIndexRay(). Dettaglio: ${msg}`);
+        throw new Error(`Unable to read indexRay() / currentIndexRay(). Detail: ${msg}`);
       }
     }
   }
 
   async function refreshAll() {
     setStatus("");
-    if (!fund) return setStatus("⚠️ Configura fundAddress (proxy) correttamente.");
-    if (!connected) return setStatus("⚠️ Connetti il wallet.");
+    if (!fund) return setStatus("⚠️ Configure fundAddress (proxy) correctly.");
+    if (!connected) return setStatus("⚠️ Connect wallet.");
 
     try {
       // symbol sanity-check
@@ -228,19 +228,19 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
 
     if (mode === "absolute") {
       const x = String(indexHuman || "").trim();
-      if (!x) throw new Error("Index (Iₜ) vuoto.");
+      if (!x) throw new Error("Index (Iₜ) is empty.");
       const n = Number(x);
-      if (!Number.isFinite(n) || n <= 0) throw new Error("Index (Iₜ) deve essere > 0.");
+      if (!Number.isFinite(n) || n <= 0) throw new Error("Index (Iₜ) must be > 0.");
       const newIdx = ethers.parseUnits(x, 18);
       return { oldIdx, newIdx };
     }
 
     // bumpPct: newI = oldI * (1 + pct/100)
     const p = String(bumpPctHuman || "").trim();
-    if (!p) throw new Error("Percentuale vuota.");
+    if (!p) throw new Error("Percentage is empty.");
     const pn = Number(p);
-    if (!Number.isFinite(pn)) throw new Error("Percentuale non valida.");
-    if (pn < 0) throw new Error("Percentuale negativa non permessa.");
+    if (!Number.isFinite(pn)) throw new Error("Percentage not valid.");
+    if (pn < 0) throw new Error("Negative percentage not allowed.");
 
     const pctRay = ethers.parseUnits(p, 18);
     const pctOver100 = pctRay / 100n;
@@ -253,9 +253,9 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
     setStatus("");
     setLastTx("");
 
-    if (!fund) return setStatus("⚠️ Configura fundAddress (proxy) correttamente.");
-    if (!connected) return setStatus("⚠️ Connetti il wallet.");
-    if (isUpdater === false) return setStatus("⛔ Non hai i permessi (NAV_UPDATER_ROLE / Admin).");
+    if (!fund) return setStatus("⚠️ Configure fundAddress (proxy) correctly.");
+    if (!connected) return setStatus("⚠️ Connect wallet.");
+    if (isUpdater === false) return setStatus("⛔ You do not have permission (NAV_UPDATER_ROLE / Admin).");
 
     try {
       let idx = indexRay;
@@ -270,13 +270,13 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
       const ts = pickTimestamp();
       const { oldIdx, newIdx } = computeNewIndexRay(idx);
 
-      if (newIdx <= 0n) throw new Error("Nuovo index non valido.");
-      if (newIdx < oldIdx) throw new Error("Nuovo index < index attuale (non permesso).");
+      if (newIdx <= 0n) throw new Error("New index not valid.");
+      if (newIdx < oldIdx) throw new Error("New index < current index (not allowed).");
 
       const signer = await provider.getSigner();
       const f = fund.connect(signer);
 
-      setStatus("⏳ Invio transazione (update INDEX Iₜ)…");
+      setStatus("⏳ Sending transaction (update INDEX Iₜ)…");
 
       let tx;
       try {
@@ -289,7 +289,7 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
       setLastTx(tx.hash);
       await tx.wait();
 
-      setStatus(`✅ Index aggiornato. tx=${tx.hash}`);
+      setStatus(`✅ Index updated. tx=${tx.hash}`);
       await refreshAll();
     } catch (e) {
       const msg = e?.shortMessage || e?.reason || e?.message || String(e);
@@ -383,7 +383,7 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
             Admin • Constant NAV (1€) • Index Iₜ
           </h2>
           <div className="text-xs text-neutral-400 mt-1">
-            NAV (prezzo quota) è <span className="font-mono">costante</span>. Lo yield si riflette nell&apos;aumento delle shares via indice globale <span className="font-mono">Iₜ</span> (<span className="font-mono">indexRay</span>).
+            NAV (share price) is <span className="font-mono">constant</span>. Yield is reflected in the increase of shares through the global index <span className="font-mono">Iₜ</span> (<span className="font-mono">indexRay</span>).
           </div>
         </div>
 
@@ -400,17 +400,17 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
         >
           {connected
             ? isUpdater === null
-              ? "Verifica ruolo…"
+              ? "Checking role…"
               : isUpdater
                 ? "✔ Authorized"
                 : "✖ Not authorized"
-            : "Wallet non connesso"}
+            : "Wallet not connected"}
         </div>
       </div>
 
       {(!fund || !isAddress(fundAddress || "")) && (
         <div className="relative mb-4 text-xs text-amber-300">
-          ⚠️ fundAddress non valido o provider non pronto. Assicurati di passare il proxy del FundToken.
+          ⚠️ Invalid fundAddress or provider not ready. Make sure you pass the FundToken proxy.
         </div>
       )}
 
@@ -431,21 +431,21 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
 
         <div className="grid md:grid-cols-3 gap-3 text-xs text-neutral-300">
           <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-            <div className="text-neutral-400">NAV (prezzo quota)</div>
+            <div className="text-neutral-400">NAV (share price)</div>
             <div className="font-mono text-2xl tracking-tight">1.0000 €</div>
             <div className="text-neutral-500 mt-1">Constant NAV (MMF-style)</div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-            <div className="text-neutral-400">Yield cumulato</div>
+            <div className="text-neutral-400">Cumulative yield</div>
             <div className="font-mono text-2xl tracking-tight">{yieldPctText}</div>
             <div className="text-neutral-500 mt-1">
-              da <span className="font-mono">Iₜ</span> = <span className="font-mono">{indexText}</span>
+              from <span className="font-mono">Iₜ</span> = <span className="font-mono">{indexText}</span>
             </div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-            <div className="text-neutral-400">Mintati in più (rebase)</div>
+            <div className="text-neutral-400">Extra minted (rebase)</div>
             <div className="font-mono text-2xl tracking-tight">{extraMintedHuman}</div>
             <div className="text-neutral-500 mt-1">totalSupply − totalBaseSupply</div>
           </div>
@@ -470,9 +470,9 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
 
       {/* Action: Update Index */}
       <div className="relative rounded-xl p-4 border border-white/10 bg-white/5 mb-4">
-        <div className="text-sm text-neutral-200 mb-2">Aggiorna Index (Iₜ)</div>
+        <div className="text-sm text-neutral-200 mb-2">Update Index (Iₜ)</div>
         <div className="text-xs text-neutral-400 mb-3">
-          Qui aggiorni <span className="font-mono">Iₜ</span> (indexRay). NAV resta fisso a 1€. L’aumento di <span className="font-mono">Iₜ</span> fa crescere le shares visibili.
+          Here you update <span className="font-mono">Iₜ</span> (indexRay). NAV stays fixed at 1 EUR. Increasing <span className="font-mono">Iₜ</span> grows visible shares.
         </div>
 
         <div className="grid md:grid-cols-3 gap-2">
@@ -481,8 +481,8 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
             value={mode}
             onChange={(e) => setMode(e.target.value)}
           >
-            <option value="absolute">Set Iₜ assoluto</option>
-            <option value="bumpPct">Apply yield % (incremento)</option>
+            <option value="absolute">Set absolute Iₜ</option>
+            <option value="bumpPct">Apply yield % (increment)</option>
           </select>
 
           {mode === "absolute" ? (
@@ -543,13 +543,13 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
             }}
             className="px-3 py-2 rounded-xl bg-neutral-900/60 border border-neutral-700 hover:border-indigo-500 text-xs"
           >
-            Set Iₜ = current
+            Set Iₜ = current value
           </button>
         </div>
 
         {/* Preview */}
         <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-neutral-300">
-          <div className="text-neutral-400 mb-2">Preview (prima di inviare)</div>
+          <div className="text-neutral-400 mb-2">Preview (before sending)</div>
           {preview ? (
             <div className="grid md:grid-cols-3 gap-3">
               <div>
@@ -560,7 +560,7 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
                 </div>
               </div>
               <div>
-                <div className="text-neutral-500">yield cumulato (new)</div>
+                <div className="text-neutral-500">cumulative yield (new)</div>
                 <div className="font-mono text-base">
                   {(preview.newY >= 0 ? "+" : "") + preview.newY.toFixed(4)}%
                 </div>
@@ -569,9 +569,9 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
                 </div>
               </div>
               <div>
-                <div className="text-neutral-500">NAV (quota)</div>
+                <div className="text-neutral-500">NAV (share)</div>
                 <div className="font-mono text-base">1.0000 €</div>
-                <div className="text-neutral-600 mt-1">NAV resta costante (MMF-style)</div>
+                <div className="text-neutral-600 mt-1">NAV stays constant (MMF-style)</div>
               </div>
             </div>
           ) : (
@@ -609,11 +609,11 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
       {/* Demo balances */}
       <div className="relative rounded-xl p-4 border border-white/10 bg-white/5">
         <div className="text-sm text-neutral-200 mb-2">
-          Demo: balance che crescono via rebasing (NAV costante)
+          Demo: balances growing through rebasing (constant NAV)
         </div>
 
         <div className="text-xs text-neutral-400 mb-2">
-          Incolla qui una lista di wallet (uno per riga). Dopo <span className="font-mono">Update Iₜ</span> vedrai i balance aggiornarsi automaticamente.
+          Paste a wallet list here (one per line). After <span className="font-mono">Update Iₜ</span> you will see balances update automatically.
         </div>
 
         <textarea
@@ -636,7 +636,7 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
           <button
             onClick={async () => {
               await snapshotBalancesBefore();
-              setStatus("📌 Snapshot BEFORE salvato. Ora aggiorna Iₜ e confronta.");
+              setStatus("📌 BEFORE snapshot saved. Now update Iₜ and compare.");
             }}
             className="px-3 py-2 rounded-xl bg-neutral-900/60 border border-neutral-700 hover:border-indigo-500 text-xs"
           >
@@ -690,7 +690,7 @@ export default function AdminPage({ provider, account, fundAddress, onError }) {
               {(!balances || balances.length === 0) && (
                 <tr>
                   <td className="py-3 text-neutral-500" colSpan={4}>
-                    Nessun wallet valido. Incolla indirizzi (uno per riga) e premi “Refresh balances”.
+                    No valid wallet found. Paste addresses (one per line) and press “Refresh balances”.
                   </td>
                 </tr>
               )}

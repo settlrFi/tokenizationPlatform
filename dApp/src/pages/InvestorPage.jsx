@@ -971,7 +971,7 @@ export default function InvestorPage(props) {
           setRelayerFactoryWarning(
             `Factory mismatch: dApp=${FACTORY_ADDR}, relayer=${ethers.getAddress(
               relayerFactory
-            )}. Riavvia la dApp dopo il deploy locale per ricaricare gli env.`
+            )}. Restart the dApp after a local deploy to reload the env values.`
           );
         } else {
           setRelayerFactoryWarning("");
