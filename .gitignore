@@ -2,6 +2,11 @@ artifacts/
 node_modules/
 cache/
 package-lock.json
+dApp/package-lock.json
 typechain-types/
 data/ai-agent-history/
 vendor/
+Analysis/
+BUIDL/
+Makefile_old
+*.log

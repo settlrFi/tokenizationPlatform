@@ -1,7 +1,7 @@
 {
-  "name": "both",
+  "name": "tokenization-platform",
   "version": "1.0.0",
-  "description": "",
+  "description": "Open-source tokenization platform with upgradeable Solidity contracts, a React dApp, oracle bot, and relayer stack.",
   "main": "index.js",
   "scripts": {
     "test": "hardhat test",
@@ -18,7 +18,14 @@
     "oracle:bot": "node oracle-bot/bot.mjs",
     "agent:server": "node backend/ai-agent-server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "tokenization",
+    "solidity",
+    "hardhat",
+    "securities",
+    "dapp",
+    "ethereum"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
