@@ -373,6 +373,19 @@ http://localhost:5173
 
 If you change any contract address or agent configuration, restart `make stack:sepolia`.
 
+## Live Demo
+
+A live preview of the platform UI can be viewed here:
+
+- https://settlrfi.github.io/
+
+Important limitation:
+
+- this live preview does not include the server-side proxy-wallet relayer
+- this live preview does not include the server-side `Seta` AI backend
+
+So the GitHub Pages demo is useful for viewing the interface and the general platform structure, but not for the server-backed relayer or AI-agent flows.
+
 ## Using the dApp
 
 The dApp is an operator console. Different pages assume different wallets, roles, and permissions.
@@ -415,6 +428,10 @@ Do not store or publish the private key in the repository or in the `README`.
 If you want to use the same wallet locally, place its private key only in your local:
 
 - [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
+
+In this repository setup, the corresponding Sepolia test private key is expected to be read locally from:
+
+- `SEPOLIA_PRIVATE_KEY` in [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
 
 and then restart:
 
