@@ -130,8 +130,8 @@ function useLocal(key, initial) {
   return [state, setState];
 }
 
-const AGENT_SESSION_STORAGE_KEY = "openclaw-workspace-agent-session-id";
-const AGENT_MESSAGES_STORAGE_KEY = "openclaw-workspace-agent-messages";
+const AGENT_SESSION_STORAGE_KEY = "seta-workspace-agent-session-id";
+const AGENT_MESSAGES_STORAGE_KEY = "seta-workspace-agent-messages";
 
 function getAgentApiBase() {
   return API_BASE;
@@ -143,7 +143,7 @@ function createAgentWelcomeMessages() {
       id: "agent-welcome",
       role: "assistant",
       content:
-        "I am the workspace assistant. I can help you use the dApp concretely, explain Compliance/Custodian/Maker/Investor flows, and prepare changes to Solidity contracts and frontend code.",
+        "I am Seta, the modern agent for tokenized assets. I can help you use the dApp concretely, explain Compliance/Custodian/Maker/Investor flows, and prepare changes to Solidity contracts and frontend code.",
     },
   ];
 }
@@ -685,7 +685,7 @@ export default function App() {
         payload?.response?.message ||
         payload?.reply ||
         payload?.history?.messages?.at?.(-1)?.content ||
-        "Risposta ricevuta dal workspace agent.";
+        "Reply received from Seta.";
 
       if (nextSessionId) setAgentSessionId(nextSessionId);
       if (payload?.provider) setAgentProvider(String(payload.provider));
@@ -706,7 +706,7 @@ export default function App() {
           id: `assistant-error-${Date.now()}`,
           role: "assistant",
           content:
-            "OpenClaw backend is unreachable. Configure `VITE_AGENT_API_BASE` to point to a service exposing `POST /ai/workspace-agent/chat`, or serve the dApp behind the same host as the backend.\n\nDetail: " +
+            "Seta backend is unreachable. Configure `VITE_AGENT_API_BASE` to point to a service exposing `POST /ai/workspace-agent/chat`, or serve the dApp behind the same host as the backend.\n\nDetail: " +
             reason,
         },
       ]);
@@ -1150,17 +1150,17 @@ export default function App() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-sm font-semibold text-white">
                       <Bot className="h-4 w-4 text-cyan-300" />
-                      <span>Workspace Agent</span>
+                      <span>Seta</span>
                     </div>
                     <p className="mt-1 text-xs text-neutral-300">
-                      Support for the dApp, Solidity contracts, local setup, and operational flows.
+                      Modern asset tokenization support for the dApp, Solidity contracts, setup, and operational flows.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setAgentOpen(false)}
                     className="rounded-full border border-white/10 bg-white/5 p-2 text-neutral-300 transition hover:border-white/20 hover:text-white"
-                    aria-label="Close workspace agent"
+                    aria-label="Close Seta"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -1196,7 +1196,7 @@ export default function App() {
                     }`}
                   >
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
-                      {entry.role === "user" ? "You" : "Agent"}
+                      {entry.role === "user" ? "You" : "Seta"}
                     </div>
                     <p className="whitespace-pre-wrap break-words leading-6">{entry.content}</p>
                   </article>
@@ -1204,7 +1204,7 @@ export default function App() {
 
                 {agentLoading ? (
                   <article className="max-w-[92%] rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100 shadow-sm">
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Agent</div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Seta</div>
                     <div className="flex items-center gap-2 text-neutral-300">
                       <LoaderCircle className="h-4 w-4 animate-spin" />
                       <span>Working on your request...</span>
@@ -1242,7 +1242,7 @@ export default function App() {
                 <textarea
                   value={agentInput}
                   onChange={(event) => setAgentInput(event.target.value)}
-                  placeholder="Ask how to use the dApp, run an operational flow, or modify contracts and frontend..."
+                  placeholder="Ask Seta how to use the dApp, run an operational flow, or modify contracts and frontend..."
                   rows={4}
                   className="min-h-[6.5rem] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/20"
                 />
@@ -1263,7 +1263,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAgentOpen((prev) => !prev)}
-          aria-label={agentOpen ? "Close workspace agent" : "Open workspace agent"}
+          aria-label={agentOpen ? "Close Seta" : "Open Seta"}
           className="group flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/30 bg-gradient-to-br from-cyan-400 via-sky-500 to-indigo-600 text-white shadow-[0_18px_40px_rgba(14,165,233,0.35)] transition hover:scale-[1.03] hover:shadow-[0_24px_52px_rgba(14,165,233,0.45)]"
         >
           <MessageCircle className="h-6 w-6 transition group-hover:scale-110" />

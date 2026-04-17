@@ -1,4 +1,4 @@
-.PHONY: all local sepolia sepolia-resume sepolia-relayer server server\:sepolia
+.PHONY: all local sepolia sepolia-resume sepolia-relayer server server\:sepolia stack\:sepolia
 
 all: local
 
@@ -89,6 +89,12 @@ server\:sepolia:
 		read_env(){ \
 			node scripts/read-env.cjs "$$1" "$$2"; \
 		}; \
+		is_template(){ \
+			case "$$1" in \
+				""|*YOUR_KEY*|*YOUR_*|0xYOUR_*|YOUR_*) return 0 ;; \
+				*) return 1 ;; \
+			esac; \
+		}; \
 		ROOT_ENV=".env"; \
 		SEPOLIA_ENV=".env.sepolia.local"; \
 		get_first(){ \
@@ -96,11 +102,11 @@ server\:sepolia:
 				if [ "$$key" = "__ROOT__" ]; then continue; fi; \
 				if [ -f "$$SEPOLIA_ENV" ]; then \
 					val="$$(read_env "$$SEPOLIA_ENV" "$$key")"; \
-					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+					if [ -n "$$val" ] && ! is_template "$$val"; then printf "%s" "$$val"; return 0; fi; \
 				fi; \
 				if [ -f "$$ROOT_ENV" ]; then \
 					val="$$(read_env "$$ROOT_ENV" "$$key")"; \
-					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+					if [ -n "$$val" ] && ! is_template "$$val"; then printf "%s" "$$val"; return 0; fi; \
 				fi; \
 			done; \
 			return 1; \
@@ -126,4 +132,22 @@ server\:sepolia:
 		test -n "$${RELAYER_ADDR:-}" || { echo "Missing RELAYER_ADDR for proxy wallet relayer"; exit 1; }; \
 		test -n "$${FIXED_FEE:-}" || { echo "Missing FIXED_FEE for proxy wallet relayer"; exit 1; }; \
 		npx ts-node proxy_wallet/relayer/src/server.ts; \
+	'
+
+stack\:sepolia:
+	@bash -lc '\
+		set -euo pipefail; \
+		cleanup(){ \
+			code=$$?; \
+			jobs -p | xargs -r kill 2>/dev/null || true; \
+			wait || true; \
+			exit $$code; \
+		}; \
+		trap cleanup INT TERM EXIT; \
+		echo "[stack:sepolia] starting relayer on Sepolia..."; \
+		$(MAKE) --no-print-directory server\:sepolia & \
+		echo "[stack:sepolia] starting AI chat backend..."; \
+		npm run agent:server & \
+		echo "[stack:sepolia] starting dApp on Sepolia..."; \
+		cd dApp && npm run dev:sepolia; \
 	'

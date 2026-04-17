@@ -1,4 +1,4 @@
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const fs = require("node:fs/promises");
 const os = require("node:os");
@@ -12,6 +12,7 @@ const CODEX_TIMEOUT_MS = 90_000;
 const CODEX_FAST_TIMEOUT_MS = 20_000;
 const SHELL_OUTPUT_LIMIT = 8_000;
 const SESSION_TURN_LIMIT = 12;
+const SESSION_MEMORY_LIMIT = 280;
 
 const sessions = new Map();
 let agentInstructionCache = null;
@@ -66,6 +67,13 @@ function trimOutput(value) {
   return `${text.slice(0, SHELL_OUTPUT_LIMIT)}\n...[truncated]`;
 }
 
+function sanitizeCodexOutput(value) {
+  return String(value ?? "")
+    .replace(/^Reading additional input from stdin\.\.\.\s*$/gim, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function commandLooksBlocked(command) {
   return blockedCommandPatterns.some((pattern) => pattern.test(command));
 }
@@ -77,20 +85,58 @@ function commandNeedsWriteAccess(command) {
 async function loadAgentInstructionFiles() {
   if (agentInstructionCache) return agentInstructionCache;
 
-  const filenames = ["SOUL.md", "USER.md", "MEMORY.md", "AGENTS.md", "TOOLS.md", "DAPP_RUNBOOK.md"];
+  const filenames = ["SOUL.md", "USER.md", "MEMORY.md"];
   const sections = await Promise.all(
     filenames.map(async (filename) => {
       try {
         const content = (await fs.readFile(path.join(workspaceRoot, filename), "utf8")).trim();
-        return content ? `### ${filename}\n${content}` : "";
+        return content || "";
       } catch {
         return "";
       }
     })
   );
 
-  agentInstructionCache = sections.filter(Boolean).join("\n\n");
+  agentInstructionCache = sections
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 700);
   return agentInstructionCache;
+}
+
+function compactText(value, limit = 140) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, limit);
+}
+
+function extractHints(text) {
+  const raw = String(text ?? "");
+  const fileMatches = raw.match(/[A-Za-z0-9_./-]+\.(sol|js|jsx|ts|tsx|md|json)/g) || [];
+  const addressMatches = raw.match(/0x[a-fA-F0-9]{40}/g) || [];
+  const commandMatches = raw.match(/\b(make [a-zA-Z0-9:_-]+|npm run [a-zA-Z0-9:_-]+|npx [a-zA-Z0-9:_-]+)/g) || [];
+  return Array.from(new Set([...fileMatches, ...addressMatches.slice(0, 2), ...commandMatches.slice(0, 2)]))
+    .slice(0, 6)
+    .join(" ");
+}
+
+function updateSessionMemory(currentMemory, userMessage, assistantMessage) {
+  const parts = [
+    compactText(currentMemory, 80),
+    compactText(userMessage, 80),
+    extractHints(userMessage),
+    compactText(assistantMessage, 80),
+    extractHints(assistantMessage),
+  ]
+    .filter(Boolean)
+    .join(" | ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return parts.slice(-SESSION_MEMORY_LIMIT);
 }
 
 async function runShellCommand(command, allowWrite) {
@@ -158,21 +204,15 @@ async function runShellCommand(command, allowWrite) {
 async function getSystemPrompt(allowWrite, mode = "smart") {
   const instructionBundle = mode === "fast" ? "" : await loadAgentInstructionFiles();
   return [
-    "You are the embedded workspace/chat agent inside this tokenization dApp.",
+    "You are Seta, the embedded workspace/chat agent for this tokenization dApp.",
     `Workspace root: ${workspaceRoot}`,
-    `Frontend path: ${frontendRoot}`,
-    `Backend path: ${backendRoot}`,
-    "This repo contains Solidity contracts, a React dApp, Hardhat scripts, and Uniswap v4 integration.",
-    "Prioritize concrete guidance for operating the dApp and making safe repo changes.",
-    "Do not expose chain-of-thought, hidden reasoning, or thinking steps.",
-    "Do not start with filler like 'Let me think' or 'I'm analyzing'. Answer directly.",
-    "Keep answers short by default unless the user explicitly asks for detail.",
+    "Repo: Solidity + Hardhat + React/Vite dApp for tokenization.",
+    "Answer directly and briefly.",
     mode === "fast" ? "Fast mode: answer with the minimum useful response and avoid deep repo exploration unless explicitly requested." : "",
     allowWrite
-      ? "Write-capable shell commands are allowed, but you must still avoid destructive actions and describe what changed."
-      : "Write-capable shell commands are disabled. Restrict yourself to inspection, builds, typechecks, and diagnostics.",
-    "When asked about usage, explain exact role-based flows in the dApp.",
-    "When asked to modify code, stay anchored to the real workspace files.",
+      ? "Write-capable shell commands are allowed. Avoid destructive actions."
+      : "Stay read-only: inspect, explain, build, diagnose.",
+    "No chain-of-thought. No filler.",
     instructionBundle,
   ].join("\n");
 }
@@ -190,6 +230,64 @@ async function getCodexLoginStatus() {
   } catch {
     return false;
   }
+}
+
+async function runCodexCommand(args, timeoutMs) {
+  return await new Promise((resolve, reject) => {
+    const child = spawn("codex", args, {
+      cwd: workspaceRoot,
+      env: codexExecEnv,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const finish = (err, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolve(value);
+    };
+
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      const error = new Error("Codex CLI timed out.");
+      error.stdout = stdout;
+      error.stderr = stderr;
+      finish(error);
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", (error) => {
+      error.stdout = stdout;
+      error.stderr = stderr;
+      finish(error);
+    });
+    child.on("close", (code) => {
+      const output = {
+        stdout: sanitizeCodexOutput(stdout),
+        stderr: sanitizeCodexOutput(stderr),
+        code: code ?? 1,
+      };
+      if (code === 0) {
+        finish(null, output);
+        return;
+      }
+      const error = new Error(output.stderr || output.stdout || `Codex CLI exited with code ${output.code}.`);
+      error.stdout = output.stdout;
+      error.stderr = output.stderr;
+      error.code = output.code;
+      finish(error);
+    });
+  });
 }
 
 async function callOpenAi(messages, model, tools, mode = "smart") {
@@ -233,47 +331,38 @@ async function callOpenAi(messages, model, tools, mode = "smart") {
   return payload;
 }
 
-async function buildCodexPrompt(history, userMessage, allowWrite, mode = "smart") {
-  const transcript =
-    mode === "fast"
-      ? ""
-      : history
-          .slice(-10)
-          .map((turn) => `${turn.role.toUpperCase()}: ${turn.content}`)
-          .join("\n\n");
+async function buildCodexPrompt(sessionState, userMessage, allowWrite, mode = "smart") {
+  const memory = mode === "fast" ? "" : compactText(sessionState?.memory || "", 220);
   const instructionBundle = mode === "fast" ? "" : await loadAgentInstructionFiles();
 
   return [
-    "You are the embedded workspace/chat agent inside this tokenization dApp.",
+    "You are Seta, the embedded workspace/chat agent for this tokenization dApp.",
     `Workspace root: ${workspaceRoot}`,
-    `Frontend path: ${frontendRoot}`,
-    `Backend path: ${backendRoot}`,
     allowWrite
       ? "Write-capable shell work is allowed, but do not use destructive commands."
       : "Stay in read-only mode: inspect, explain, build, and diagnose only.",
-    "Be concrete. Help with the dApp operational flows and with Solidity/frontend code changes.",
-    "Do not expose chain-of-thought, hidden reasoning, or thinking steps.",
-    "Do not start with filler like 'Let me think' or 'I'm analyzing'. Answer directly and briefly.",
+    "Be concrete. Help with dApp flows and repo changes.",
+    "No chain-of-thought. No filler.",
     mode === "fast" ? "Fast mode: keep the answer minimal and avoid heavy inspection unless explicitly requested." : "",
     instructionBundle,
-    transcript ? `Conversation so far:\n${transcript}` : "",
+    memory ? `Session memory:\n${memory}` : "",
     `USER: ${userMessage}`,
   ]
     .filter(Boolean)
     .join("\n\n");
 }
 
-async function callCodexCli(history, userMessage, allowWrite, model, mode = "smart") {
+async function callCodexCli(sessionState, userMessage, allowWrite, model, mode = "smart") {
   const loggedIn = await getCodexLoginStatus();
   if (!loggedIn) {
     throw new Error(
-      "Codex CLI is not logged in for the backend OS user. Run `codex login --device-auth` in the same terminal user, then restart the agent server."
+        "Codex CLI is not logged in for the backend OS user. Run `codex login --device-auth` in the same terminal user, then restart the Seta backend."
     );
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-agent-"));
   const outputFile = path.join(tempDir, "last-message.txt");
-  const prompt = await buildCodexPrompt(history, userMessage, allowWrite, mode);
+  const prompt = await buildCodexPrompt(sessionState, userMessage, allowWrite, mode);
   const args = ["exec", "-C", workspaceRoot, "--skip-git-repo-check", "-o", outputFile];
 
   if (model !== "codex-default") args.push("-m", model);
@@ -284,17 +373,27 @@ async function callCodexCli(history, userMessage, allowWrite, model, mode = "sma
   args.push(prompt);
 
   try {
-    await execFileAsync("codex", args, {
-      cwd: workspaceRoot,
-      env: codexExecEnv,
-      timeout: mode === "fast" ? CODEX_FAST_TIMEOUT_MS : CODEX_TIMEOUT_MS,
-      maxBuffer: 1024 * 1024,
-    });
-    const finalText = (await fs.readFile(outputFile, "utf8")).trim();
-    if (!finalText) throw new Error("Codex completed without returning a final message.");
+    const result = await runCodexCommand(args, mode === "fast" ? CODEX_FAST_TIMEOUT_MS : CODEX_TIMEOUT_MS);
+
+    let finalText = "";
+    try {
+      finalText = (await fs.readFile(outputFile, "utf8")).trim();
+    } catch (readError) {
+      if (readError?.code !== "ENOENT") throw readError;
+    }
+
+    if (!finalText) {
+      finalText = trimOutput(result.stdout || result.stderr || "");
+    }
+
+    if (!finalText) {
+      throw new Error(
+        "Codex completed without returning a final message. Set OPENAI_API_KEY for the backend or verify the local Codex CLI version/output mode."
+      );
+    }
     return finalText;
   } catch (error) {
-    const reason = trimOutput(error.stderr || error.message || error.stdout);
+    const reason = trimOutput(sanitizeCodexOutput(error.stderr || error.message || error.stdout));
     throw new Error(reason || "Codex CLI request failed.");
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
@@ -319,7 +418,7 @@ function resolveAgentModel(provider, requestedModel) {
   return requested || process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL || "gpt-5-nano";
 }
 
-async function persistAgentTurn({ sessionId, provider, model, allowWrite, userMessage, assistantMessage, steps }) {
+async function persistAgentTurn({ sessionId, provider, model, allowWrite, userMessage, assistantMessage, steps, memory }) {
   await fs.mkdir(chatHistoryDir, { recursive: true });
   const targetFile = path.join(chatHistoryDir, `${sessionId}.jsonl`);
   const row = {
@@ -330,6 +429,7 @@ async function persistAgentTurn({ sessionId, provider, model, allowWrite, userMe
     userMessage,
     assistantMessage,
     steps,
+    memory,
   };
   await fs.appendFile(targetFile, `${JSON.stringify(row)}\n`, "utf8");
 }
@@ -357,15 +457,17 @@ async function chatWithWorkspaceAgent(request) {
     throw new Error("Agent message is required.");
   }
 
-  const history = sessions.get(sessionId) ?? [];
+  const sessionState = sessions.get(sessionId) ?? { history: [], memory: "" };
+  const history = Array.isArray(sessionState.history) ? sessionState.history : [];
 
   if (provider === "codex") {
-    const finalMessage = await callCodexCli(history, userMessage, allowWrite, model, requestedMode);
+    const finalMessage = await callCodexCli(sessionState, userMessage, allowWrite, model, requestedMode);
     const nextHistory =
       requestedMode === "fast"
         ? []
         : [...history, { role: "user", content: userMessage }, { role: "assistant", content: finalMessage }].slice(-SESSION_TURN_LIMIT);
-    sessions.set(sessionId, nextHistory);
+    const nextMemory = updateSessionMemory(sessionState.memory, userMessage, finalMessage);
+    sessions.set(sessionId, { history: nextHistory, memory: nextMemory });
 
     await persistAgentTurn({
       sessionId,
@@ -375,6 +477,7 @@ async function chatWithWorkspaceAgent(request) {
       userMessage,
       assistantMessage: finalMessage,
       steps: [],
+      memory: nextMemory,
     });
 
     return {
@@ -391,7 +494,11 @@ async function chatWithWorkspaceAgent(request) {
 
   const messages = [
     { role: "system", content: await getSystemPrompt(allowWrite, requestedMode) },
-    ...(requestedMode === "fast" ? [] : history.slice(-10).map((turn) => ({ role: turn.role, content: turn.content }))),
+    ...(requestedMode === "fast"
+      ? []
+      : sessionState.memory
+          ? [{ role: "system", content: `Session memory: ${compactText(sessionState.memory, 220)}` }]
+          : []),
     { role: "user", content: userMessage },
   ];
 
@@ -425,7 +532,7 @@ async function chatWithWorkspaceAgent(request) {
     const completion = await callOpenAi(messages, model, tools, requestedMode);
       const assistantMessage = completion?.choices?.[0]?.message;
     if (!assistantMessage) {
-      throw new Error("OpenAI did not return an assistant message.");
+      throw new Error("OpenAI did not return a Seta message.");
     }
 
     if (assistantMessage.tool_calls?.length) {
@@ -463,14 +570,15 @@ async function chatWithWorkspaceAgent(request) {
   }
 
   if (!finalMessage) {
-    finalMessage = "The workspace agent stopped without a final answer.";
+    finalMessage = "Seta stopped without a final answer.";
   }
 
   const nextHistory =
     requestedMode === "fast"
       ? []
       : [...history, { role: "user", content: userMessage }, { role: "assistant", content: finalMessage }].slice(-SESSION_TURN_LIMIT);
-  sessions.set(sessionId, nextHistory);
+  const nextMemory = updateSessionMemory(sessionState.memory, userMessage, finalMessage);
+  sessions.set(sessionId, { history: nextHistory, memory: nextMemory });
 
   await persistAgentTurn({
     sessionId,
@@ -480,6 +588,7 @@ async function chatWithWorkspaceAgent(request) {
     userMessage,
     assistantMessage: finalMessage,
     steps,
+    memory: nextMemory,
   });
 
   return {

@@ -1,11 +1,93 @@
 # Tokenization Platform
 
-Open-source tokenization platform with:
+Open-source tokenization platform for regulated digital assets, with:
+
 - upgradeable Solidity contracts
 - a React/Vite operator dApp
 - a permissioned market
-- an oracle bot
-- a proxy-wallet / relayer stack
+- an oracle updater bot
+- a proxy-wallet / relayer stack for gasless flows
+- `Seta`, the embedded AI operator agent in the dApp
+
+## Main Entry Point
+
+The main operator experience of this repository is:
+
+```bash
+make stack:sepolia
+```
+
+This is the primary command to run the full Sepolia stack with:
+
+- the dApp
+- the proxy-wallet relayer
+- `Seta`, the embedded AI operator agent
+
+Before running it:
+
+1. make sure the Sepolia contracts are already deployed and the env files contain their addresses
+2. configure `Seta` with either:
+   `OPENAI_API_KEY`
+   or `codex login --device-auth`
+
+Once ready, launch:
+
+```bash
+make stack:sepolia
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+## Seta
+
+`Seta` is the core operator agent of the platform.
+
+It is designed to:
+
+- guide operators through tokenization flows
+- explain role requirements and contract configuration
+- help debug compliance, relayer, wallet, and chain issues
+- assist with Solidity, script, and frontend changes directly from the dApp chat
+
+`Seta` runs through the backend service in:
+
+- [backend/ai-agent-server.js](/home/frataran/Desktop/projects/tokenizationPlatform/backend/ai-agent-server.js)
+
+## Architecture
+
+The repository is split into five main layers:
+
+- `src/`: core Solidity contracts, token logic, compliance registry, market
+- `scripts/`: deployment, bootstrap, and operational scripts
+- `dApp/`: operator console for Admin, Compliance, Depositary, Maker, Investor, and Custodian flows
+- `proxy_wallet/`: proxy wallet contracts plus the relayer server used by gasless investor actions
+- `backend/`: the `Seta` chat backend exposed to the dApp
+
+Supporting modules:
+
+- `oracle-bot/`: off-chain oracle updater
+- `deployments/`: exported deployed addresses for local and Sepolia environments
+- `memory/`: optional repo notes when historical context matters
+
+## Infrastructure Model
+
+This platform runs as three coordinated services around the deployed contracts:
+
+1. Smart contracts on the target chain
+2. The operator dApp
+3. Off-chain services:
+   `oracle-bot`, proxy-wallet relayer, and `Seta`
+
+For Sepolia, the recommended runtime is:
+
+- deployed contracts already present on Sepolia
+- `.env.sepolia.local` populated with current contract addresses and relayer credentials
+- `dApp/.env.sepolia.local` populated with matching `VITE_*` addresses
+- `make stack:sepolia` to launch the operator stack in one command
 
 ## Repository Layout
 
@@ -13,21 +95,24 @@ Open-source tokenization platform with:
 - `scripts/`: deployment and operational scripts
 - `dApp/`: operator console
 - `proxy_wallet/`: proxy wallet contracts, relayer, and support scripts
+- `backend/`: `Seta` backend service
 - `oracle-bot/`: price updater bot
 - `deployments/`: exported deployed addresses
 
 ## Environment Files
 
-This repository uses env files as the source of truth for deployed contract addresses.
+Environment files are the source of truth for deployed contract addresses.
 
-Keep these files populated with the addresses produced by your latest deployment:
+Do not remove the env files that contain the local or Sepolia addresses. Keep them aligned with the latest deployment state.
+
+Primary files:
 
 - root local: [`.env`](/home/frataran/Desktop/projects/tokenizationPlatform/.env)
 - root Sepolia: [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
 - dApp local: [dApp/.env](/home/frataran/Desktop/projects/tokenizationPlatform/dApp/.env)
-- dApp Sepolia: `dApp/.env.sepolia.local`
+- dApp Sepolia: [dApp/.env.sepolia.local](/home/frataran/Desktop/projects/tokenizationPlatform/dApp/.env.sepolia.local)
 
-At minimum, keep these address variables updated after each deploy:
+At minimum, after each deployment keep these contract addresses updated in the root env:
 
 - `FACTORY_ADDRESS`
 - `COMPLIANCE_REGISTRY`
@@ -39,8 +124,9 @@ At minimum, keep these address variables updated after each deploy:
 - `ISP_MI_ADDRESS`
 - `MARKET_ADDRESS`
 
-For the frontend, the matching `VITE_*` values must also be set:
+For the frontend, keep the matching `VITE_*` values updated:
 
+- `VITE_CHAIN_ID`
 - `VITE_MARKET_ADDRESS`
 - `VITE_ORACLE_ADDRESS`
 - `VITE_COMPLIANCE_REGISTRY`
@@ -51,21 +137,25 @@ For the frontend, the matching `VITE_*` values must also be set:
 - `VITE_ISP_MI_ADDRESS`
 - `VITE_FACTORY`
 - `VITE_SECURITY_TOKEN_FACTORY`
+- `VITE_BUNDLER`
+- `VITE_RELAYER_ADDR`
+- `VITE_MUSD`
+- `VITE_MARKET_DEPLOY_BLOCK`
 
-Public Sepolia addresses can also be read from:
+Sepolia addresses can also be verified in:
 
 - [deployments/sepolia.addresses.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments/sepolia.addresses.json)
 - [deployments.sepolia.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments.sepolia.json)
 
 ## Install
 
-Root:
+Root dependencies:
 
 ```bash
 npm install
 ```
 
-dApp:
+dApp dependencies:
 
 ```bash
 cd dApp
@@ -80,16 +170,34 @@ Start a local Hardhat node:
 npx hardhat node
 ```
 
-Bootstrap the full local stack:
+Bootstrap the local contracts and supporting services:
 
 ```bash
 make local
 ```
 
-Start the relayer:
+This local bootstrap compiles and deploys:
+
+- core implementations
+- compliance registry
+- oracle
+- token proxies
+- market
+- proxy-wallet contracts
+- local inventory permissions
+
+It also runs the local oracle seed once during bootstrap.
+
+Start the local relayer:
 
 ```bash
 make server
+```
+
+Start the local `Seta` backend:
+
+```bash
+npm run agent:server
 ```
 
 Start the dApp:
@@ -99,32 +207,165 @@ cd dApp
 npm run dev
 ```
 
-## Sepolia
+Full local runtime, with all services started manually:
 
-Run or resume the main deployment:
+1. start the local node
+   ```bash
+   npx hardhat node
+   ```
+2. deploy and bootstrap the local contracts
+   ```bash
+   make local
+   ```
+3. start the local proxy-wallet relayer
+   ```bash
+   make server
+   ```
+4. start the `Seta` backend
+   ```bash
+   npm run agent:server
+   ```
+5. start the dApp
+   ```bash
+   cd dApp
+   npm run dev
+   ```
+
+## Sepolia Deployment
+
+Run or resume the main Sepolia deployment:
 
 ```bash
 make sepolia-resume
 ```
 
-Deploy the proxy-wallet / relayer stack:
+This deploys or resumes the Solidity contracts defined in this project on Sepolia:
+
+- upgradeable token implementations
+- compliance registry
+- oracle
+- stable, fund, and equity token proxies
+- market
+- oracle updater permissions
+- inventory role wiring
+
+If the run is interrupted, `make sepolia-resume` is the recommended restart path.
+
+Deploy or resume the proxy-wallet / relayer contracts:
 
 ```bash
 make sepolia-relayer
 ```
 
-Start the Sepolia relayer:
+The proxy-wallet deployment covers:
+
+- `ProxyWallet`
+- `ProxyWalletFactory`
+- `RelayBundler`
+- stable-token bootstrap used by the gasless investor flow
+
+Run the Sepolia relayer only:
 
 ```bash
 make server:sepolia
 ```
 
-Start the Sepolia dApp:
+Run the Sepolia dApp only:
 
 ```bash
 cd dApp
 npm run dev:sepolia
 ```
+
+Full Sepolia runtime, assuming the contracts have already been deployed:
+
+1. deploy or resume the core contracts
+   ```bash
+   make sepolia-resume
+   ```
+2. deploy or resume the proxy-wallet stack
+   ```bash
+   make sepolia-relayer
+   ```
+3. configure `Seta`
+   with `OPENAI_API_KEY` or `codex login --device-auth`
+4. start everything together
+   ```bash
+   make stack:sepolia
+   ```
+
+## Seta Backend
+
+The backend entrypoint is:
+
+- [backend/ai-agent-server.js](/home/frataran/Desktop/projects/tokenizationPlatform/backend/ai-agent-server.js)
+
+The service exposes:
+
+- `POST /ai/workspace-agent/chat`
+- `GET /ai/workspace-agent/history`
+- `GET /health`
+
+By default:
+
+- if `OPENAI_API_KEY` is set, `Seta` uses OpenAI
+- otherwise it falls back to the local `codex` CLI
+
+## Configure Seta Before Startup
+
+Before running the full Sepolia stack, decide which backend mode `Seta` should use.
+
+Option 1: OpenAI-backed `Seta`
+
+Set the key in your shell or env before startup:
+
+```bash
+export OPENAI_API_KEY=your_key_here
+```
+
+Optional model override:
+
+```bash
+export OPENAI_AGENT_MODEL=gpt-5-mini
+```
+
+Option 2: local Codex-backed `Seta`
+
+Make sure the backend OS user is logged in:
+
+```bash
+codex login --device-auth
+```
+
+Then verify:
+
+```bash
+codex login status
+```
+
+If you do not configure either of these correctly, the dApp chat can start but `Seta` will fail to answer requests.
+
+## One-Command Sepolia Stack
+
+Once the Sepolia env files contain the deployed addresses and `Seta` is configured, launch the full operator stack with:
+
+```bash
+make stack:sepolia
+```
+
+This command starts:
+
+- the Sepolia proxy-wallet relayer on port `3000`
+- the `Seta` backend on port `8787`
+- the Sepolia dApp via Vite on port `5173`
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+If you change any contract address or agent configuration, restart `make stack:sepolia`.
 
 ## Oracle Bot
 
@@ -143,9 +384,17 @@ EURUSD_FALLBACK=1.08
 PRICE_FALLBACKS="AAPL=200,MSFT=350,ISP.MI=7"
 ```
 
-## Notes
+## Operational Notes
 
-- The root env files are operational config files and must contain the currently deployed contract addresses.
-- The dApp env files must mirror the deployed addresses with `VITE_*` keys, otherwise the UI will read the wrong contracts.
-- If you update addresses, restart both the relayer and the dApp.
-- Sepolia private keys and RPC credentials should be replaced locally before publishing or sharing your own fork.
+- Root env files must contain the currently deployed contract addresses.
+- dApp env files must mirror the same deployment using `VITE_*` keys.
+- If addresses drift between root env and dApp env, the UI will read the wrong contracts.
+- If the relayer is started with the wrong wallet or wrong env, proxy-wallet flows will fail even if the dApp loads.
+- `VITE_CHAIN_ID` and `VITE_MARKET_DEPLOY_BLOCK` must match the deployed target network.
+- If you update env values, restart the relayer, `Seta`, and the dApp.
+
+## Security Notes
+
+- Never publish real private keys from your local `.env` files.
+- Replace Sepolia RPC credentials and signer keys in your own fork.
+- Do not claim a deployment succeeded unless the contracts and addresses are verified in the deployment artifacts or on-chain.
