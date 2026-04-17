@@ -373,6 +373,192 @@ http://localhost:5173
 
 If you change any contract address or agent configuration, restart `make stack:sepolia`.
 
+## Using the dApp
+
+The dApp is an operator console. Different pages assume different wallets, roles, and permissions.
+
+### Initial Setup
+
+When the dApp opens:
+
+1. connect the wallet in MetaMask
+2. make sure the wallet is on the expected chain
+3. open the configuration panel
+4. click `Autofill from .env`
+5. click `Save configuration`
+
+This loads the frontend with the addresses and runtime config already defined in the env files.
+
+Before using any page, verify:
+
+- the wallet is connected
+- the chain id is correct
+- the proxy addresses shown in the UI match the deployment
+- the connected wallet has the role required by that page
+
+### Sepolia Test Operator Wallet
+
+For this repository setup, the main Sepolia operator wallet used in testing is:
+
+- `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c`
+
+In this specific setup, that wallet is used as the simplified all-roles operator for:
+
+- compliance actions
+- custodian actions
+- admin actions
+- maker and inventory actions
+- relayer operations
+
+Do not store or publish the private key in the repository or in the `README`.
+
+If you want to use the same wallet locally, place its private key only in your local:
+
+- [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
+
+and then restart:
+
+```bash
+make stack:sepolia
+```
+
+### Compliance
+
+Required wallet and role:
+
+- a wallet with `COMPLIANCE_ROLE` on the compliance registry
+- in the current Sepolia test setup, `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c`
+
+Use this page to:
+
+- whitelist investor wallets
+- set or extend KYC expiry
+- verify whitelist and KYC status
+
+Common failures:
+
+- wrong compliance registry address
+- connected wallet missing `COMPLIANCE_ROLE`
+- wrong network
+- invalid investor wallet address
+
+### Custodian
+
+Required wallet and role:
+
+- a wallet with `DEPOSITARY_ROLE` on the target token proxy
+- in the current Sepolia test setup, `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c`
+
+Use this page to:
+
+- authorize mint flows
+- authorize burn flows
+- complete custodian-side issuance and redemption operations
+
+Common failures:
+
+- missing `DEPOSITARY_ROLE`
+- wrong token proxy selected
+- incomplete burn parameters
+
+### Admin
+
+Required wallet and role:
+
+- an admin wallet, or a wallet with the required updater role for the action
+- in the current Sepolia test setup, `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c`
+
+Use this page to:
+
+- manage admin-level infrastructure actions
+- manage oracle or NAV-related permissions
+- operate constant-NAV style controls where enabled
+
+Common failures:
+
+- using an implementation address instead of a proxy
+- wallet missing admin or updater permissions
+
+### Maker
+
+Required wallet and role:
+
+- a wallet with `INVENTORY_ROLE` on `Market`
+- in the current Sepolia test setup, `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c`
+
+Use this page to:
+
+- deposit stable inventory
+- deposit asset inventory
+- withdraw inventory
+- propose maker mint and burn flows for later custodian handling
+
+Common failures:
+
+- wallet not granted maker or inventory permissions
+- missing token approval
+- unlisted asset selection
+
+### Distributor
+
+Required wallet and role:
+
+- the operational wallet configured for distribution and transfer workflows
+- in the current Sepolia test setup, use `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c` unless you split roles
+
+Use this page to:
+
+- move stable or asset balances to investor wallets
+- propose mint or burn flows for investors
+
+Common failures:
+
+- recipient blocked by compliance
+- insufficient balance
+- wrong token selected
+
+### Investor
+
+Required wallet and role:
+
+- an investor wallet, or the wallet being tested in investor flows
+- for operator-side testing in this setup, `0xD0413151EA1E3088DeC3A3CFA926d993a962fd2c` can also be used
+
+Use this page to:
+
+- inspect listed assets
+- inspect wallet balances
+- buy from maker inventory
+- sell to maker inventory
+- transfer stable or assets
+- create and use the proxy-wallet / relayer flow
+
+For the gasless path:
+
+- the relayer must be running
+- `VITE_FACTORY`, `VITE_BUNDLER`, `VITE_MUSD`, and `VITE_RELAYER_ADDR` must match the deployed contracts
+
+Common failures:
+
+- wrong chain in MetaMask
+- stale frontend config because `Autofill from .env` and `Save configuration` were not applied
+- investor wallet or proxy wallet not whitelisted
+- relayer not running or misconfigured
+
+### Registry
+
+Use this page to:
+
+- inspect historical and live events
+- verify emitted logs
+- trace market, registry, and token activity across the platform
+
+Use it when:
+
+- a transaction appears successful but UI state looks stale
+- you need an audit trail
+- you need to verify which contract emitted a given event
+
 ## Oracle Bot
 
 Run a continuous price update:
