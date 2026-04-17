@@ -55,7 +55,7 @@ It is designed to:
 
 `Seta` runs through the backend service in:
 
-- [backend/ai-agent-server.js](/home/frataran/Desktop/projects/tokenizationPlatform/backend/ai-agent-server.js)
+- [backend/ai-agent-server.js](tokenizationPlatform/backend/ai-agent-server.js)
 
 ## Architecture
 
@@ -107,10 +107,10 @@ Do not remove the env files that contain the local or Sepolia addresses. Keep th
 
 Primary files:
 
-- root local: [`.env`](/home/frataran/Desktop/projects/tokenizationPlatform/.env)
-- root Sepolia: [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
-- dApp local: [dApp/.env](/home/frataran/Desktop/projects/tokenizationPlatform/dApp/.env)
-- dApp Sepolia: [dApp/.env.sepolia.local](/home/frataran/Desktop/projects/tokenizationPlatform/dApp/.env.sepolia.local)
+- root local: [`.env`](tokenizationPlatform/.env)
+- root Sepolia: [`.env.sepolia.local`](tokenizationPlatform/.env.sepolia.local)
+- dApp local: [dApp/.env](tokenizationPlatform/dApp/.env)
+- dApp Sepolia: [dApp/.env.sepolia.local](tokenizationPlatform/dApp/.env.sepolia.local)
 
 At minimum, after each deployment keep these contract addresses updated in the root env:
 
@@ -144,8 +144,8 @@ For the frontend, keep the matching `VITE_*` values updated:
 
 Sepolia addresses can also be verified in:
 
-- [deployments/sepolia.addresses.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments/sepolia.addresses.json)
-- [deployments.sepolia.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments.sepolia.json)
+- [deployments/sepolia.addresses.json](tokenizationPlatform/deployments/sepolia.addresses.json)
+- [deployments.sepolia.json](tokenizationPlatform/deployments.sepolia.json)
 
 ## Node.js Version
 
@@ -304,7 +304,7 @@ Full Sepolia runtime, assuming the contracts have already been deployed:
 
 The backend entrypoint is:
 
-- [backend/ai-agent-server.js](/home/frataran/Desktop/projects/tokenizationPlatform/backend/ai-agent-server.js)
+- [backend/ai-agent-server.js](tokenizationPlatform/backend/ai-agent-server.js)
 
 The service exposes:
 
@@ -427,11 +427,11 @@ Do not store or publish the private key in the repository or in the `README`.
 
 If you want to use the same wallet locally, place its private key only in your local:
 
-- [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
+- [`.env.sepolia.local`](tokenizationPlatform/.env.sepolia.local)
 
 In this repository setup, the corresponding Sepolia test private key is expected to be read locally from:
 
-- `SEPOLIA_PRIVATE_KEY` in [`.env.sepolia.local`](/home/frataran/Desktop/projects/tokenizationPlatform/.env.sepolia.local)
+- `SEPOLIA_PRIVATE_KEY` in [`.env.sepolia.local`](tokenizationPlatform/.env.sepolia.local)
 
 and then restart:
 
