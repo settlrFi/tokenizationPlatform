@@ -1,5 +1,9 @@
 # Tokenization Platform
 
+> **An open-source financial infrastructure project**  
+> Designed and maintained by **Manuel Naviglio** and **Francesco Tarantelli**
+
+
 Open-source tokenization platform for regulated digital assets, with:
 
 - upgradeable Solidity contracts
@@ -8,6 +12,8 @@ Open-source tokenization platform for regulated digital assets, with:
 - an oracle updater bot
 - a proxy-wallet / relayer stack for gasless flows
 - `Seta`, the embedded AI operator agent in the dApp
+
+
 
 ## Main Entry Point
 
