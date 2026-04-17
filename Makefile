@@ -137,6 +137,39 @@ server\:sepolia:
 stack\:sepolia:
 	@bash -lc '\
 		set -euo pipefail; \
+		read_env(){ \
+			node scripts/read-env.cjs "$$1" "$$2"; \
+		}; \
+		SEPOLIA_ENV=".env.sepolia.local"; \
+		ROOT_ENV=".env"; \
+		get_first(){ \
+			for key in "$$@"; do \
+				if [ -f "$$SEPOLIA_ENV" ]; then \
+					val="$$(read_env "$$SEPOLIA_ENV" "$$key")"; \
+					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+				fi; \
+				if [ -f "$$ROOT_ENV" ]; then \
+					val="$$(read_env "$$ROOT_ENV" "$$key")"; \
+					if [ -n "$$val" ]; then printf "%s" "$$val"; return 0; fi; \
+				fi; \
+			done; \
+			return 1; \
+		}; \
+		ORACLE_RPC="$${SEPOLIA_RPC_URL:-$${RPC_URL:-$$(get_first SEPOLIA_RPC_URL RPC_URL || true)}}"; \
+		ORACLE_PK="$${ORACLE_BOT_PRIVATE_KEY:-$${SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY:-$${SEPOLIA_PRIVATE_KEY:-$$(get_first ORACLE_BOT_PRIVATE_KEY SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY SEPOLIA_PRIVATE_KEY PRIVATE_KEY || true)}}}"; \
+		ORACLE_ADDR="$$(get_first ORACLE_ADDRESS || true)"; \
+		AAPL_ADDR="$$(get_first AAPL_ADDRESS || true)"; \
+		MSFT_ADDR="$$(get_first MSFT_ADDRESS || true)"; \
+		ISP_MI_ADDR="$$(get_first ISP_MI_ADDRESS || true)"; \
+		LOG_DIR=".stack-logs"; \
+		progress(){ \
+			pct="$$1"; \
+			label="$$2"; \
+			filled=$$(( pct / 10 )); \
+			bar="$$(printf "%0.s#" $$(seq 1 $$filled))"; \
+			empty="$$(printf "%0.s-" $$(seq 1 $$((10 - filled))))"; \
+			printf "[stack:sepolia] [%s%s] %3s%% %s\n" "$$bar" "$$empty" "$$pct" "$$label"; \
+		}; \
 		cleanup(){ \
 			code=$$?; \
 			jobs -p | xargs -r kill 2>/dev/null || true; \
@@ -144,10 +177,30 @@ stack\:sepolia:
 			exit $$code; \
 		}; \
 		trap cleanup INT TERM EXIT; \
-		echo "[stack:sepolia] starting relayer on Sepolia..."; \
-		$(MAKE) --no-print-directory server\:sepolia & \
-		echo "[stack:sepolia] starting AI chat backend..."; \
-		npm run agent:server & \
-		echo "[stack:sepolia] starting dApp on Sepolia..."; \
-		cd dApp && npm run dev:sepolia; \
+		test -n "$$ORACLE_RPC" || { echo "Missing SEPOLIA_RPC_URL (or RPC_URL)"; exit 1; }; \
+		test -n "$$ORACLE_PK" || { echo "Missing ORACLE_BOT_PRIVATE_KEY / SEPOLIA_ORACLE_UPDATER_PRIVATE_KEY / SEPOLIA_PRIVATE_KEY"; exit 1; }; \
+		test -n "$$ORACLE_ADDR" || { echo "Missing ORACLE_ADDRESS"; exit 1; }; \
+		mkdir -p "$$LOG_DIR"; \
+		progress 10 "Updating asset prices via oracle..."; \
+		if ! RPC_URL="$$ORACLE_RPC" PRIVATE_KEY="$$ORACLE_PK" ORACLE_ADDRESS="$$ORACLE_ADDR" AAPL_ADDRESS="$$AAPL_ADDR" MSFT_ADDRESS="$$MSFT_ADDR" ISP_MI_ADDRESS="$$ISP_MI_ADDR" node oracle-bot/bot.mjs --once > "$$LOG_DIR/oracle.log" 2>&1; then \
+			:; \
+		fi; \
+		progress 35 "Starting relayer on Sepolia..."; \
+		$(MAKE) --no-print-directory server\:sepolia > "$$LOG_DIR/relayer.log" 2>&1 & \
+		progress 60 "Starting Seta backend..."; \
+		npm run agent:server > "$$LOG_DIR/seta.log" 2>&1 & \
+		progress 80 "Starting dApp on Sepolia..."; \
+		cd dApp && npm run dev:sepolia > "../$$LOG_DIR/dapp.log" 2>&1 & \
+		DAPP_PID="$$!"; \
+		for _ in $$(seq 1 60); do \
+			if curl -fsS "http://127.0.0.1:5173" >/dev/null 2>&1; then \
+				progress 100 "dApp is running on http://localhost:5173"; \
+				wait "$$DAPP_PID"; \
+				exit $$?; \
+			fi; \
+			sleep 1; \
+		done; \
+		echo "[stack:sepolia] dApp did not become ready on http://127.0.0.1:5173 within 60s"; \
+		echo "[stack:sepolia] Check logs in $$LOG_DIR"; \
+		wait "$$DAPP_PID"; \
 	'

@@ -30,6 +30,7 @@ const wallet = new NonceManager(baseWallet);
 const FETCH_TIMEOUT_MS = Number(PRICE_FETCH_TIMEOUT_MS);
 const FETCH_RETRIES = Number(PRICE_FETCH_RETRIES);
 const SHOULD_ENFORCE_PRICE_AGE = String(ENFORCE_PRICE_AGE).toLowerCase() === 'true';
+const TX_RETRIES = Math.max(2, FETCH_RETRIES);
 
 const oracleAbi = [
   'function setPrice(bytes32 id, uint256 price, uint64 timestamp) external',
@@ -73,6 +74,22 @@ async function withRetry(label, fn) {
       if (attempt > FETCH_RETRIES) break;
       const waitMs = attempt * 500;
       console.warn(`${label} failed (attempt ${attempt}/${FETCH_RETRIES + 1}), retrying in ${waitMs}ms:`, error?.message || error);
+      await sleep(waitMs);
+    }
+  }
+  throw lastError;
+}
+
+async function withTxRetry(label, fn) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= TX_RETRIES + 1; attempt++) {
+    try {
+      return await fn(attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt > TX_RETRIES) break;
+      const waitMs = attempt * 1200;
+      console.warn(`${label} failed (attempt ${attempt}/${TX_RETRIES + 1}), retrying in ${waitMs}ms:`, error?.shortMessage || error?.message || error);
       await sleep(waitMs);
     }
   }
@@ -230,10 +247,11 @@ async function pushPrice(symbol, oracleDecimals, eurUsdInfo) {
 
   const assetId = toAssetId(symbol);
   const scaled = scalePrice(effectivePrice, Number(oracleDecimals));
-
-  const tx = await oracle.setPrice(assetId, scaled, ts);
-  console.log(`[${new Date().toISOString()}] ${symbol} -> ${effectivePrice} via ${sourceLabel} (id=${assetId}) tx=${tx.hash}`);
-  const rec = await tx.wait();
+  const rec = await withTxRetry(`${symbol} setPrice`, async () => {
+    const tx = await oracle.setPrice(assetId, scaled, ts);
+    console.log(`[${new Date().toISOString()}] ${symbol} -> ${effectivePrice} via ${sourceLabel} (id=${assetId}) tx=${tx.hash}`);
+    return await tx.wait();
+  });
   console.log(`   mined: ${rec.hash}`);
 }
 
