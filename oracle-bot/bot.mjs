@@ -284,6 +284,8 @@ async function main() {
       console.error(`Update failed ${s}:`, e.shortMessage || e.message);
     }
   }
+
+  console.log(`[${new Date().toISOString()}] oracle update cycle completed`);
 }
 
 if (process.argv.includes('--once')) {

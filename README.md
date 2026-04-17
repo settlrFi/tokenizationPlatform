@@ -147,6 +147,12 @@ Sepolia addresses can also be verified in:
 - [deployments/sepolia.addresses.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments/sepolia.addresses.json)
 - [deployments.sepolia.json](/home/frataran/Desktop/projects/tokenizationPlatform/deployments.sepolia.json)
 
+## Node.js Version
+
+Environment used here:
+
+- `Node.js v25.8.1`
+
 ## Install
 
 Root dependencies:
@@ -368,6 +374,12 @@ http://localhost:5173
 If you change any contract address or agent configuration, restart `make stack:sepolia`.
 
 ## Oracle Bot
+
+Run a continuous price update:
+
+```bash
+node oracle-bot/bot.mjs --once
+```
 
 Run a single price update:
 

@@ -161,6 +161,8 @@ stack\:sepolia:
 		AAPL_ADDR="$$(get_first AAPL_ADDRESS || true)"; \
 		MSFT_ADDR="$$(get_first MSFT_ADDRESS || true)"; \
 		ISP_MI_ADDR="$$(get_first ISP_MI_ADDRESS || true)"; \
+		ORACLE_SYMBOLS="$${SYMBOLS:-$$(get_first SYMBOLS || true)}"; \
+		if [ -z "$$ORACLE_SYMBOLS" ]; then ORACLE_SYMBOLS="AAPL,MSFT,ISP.MI"; fi; \
 		LOG_DIR=".stack-logs"; \
 		progress(){ \
 			pct="$$1"; \
@@ -182,9 +184,8 @@ stack\:sepolia:
 		test -n "$$ORACLE_ADDR" || { echo "Missing ORACLE_ADDRESS"; exit 1; }; \
 		mkdir -p "$$LOG_DIR"; \
 		progress 10 "Updating asset prices via oracle..."; \
-		if ! RPC_URL="$$ORACLE_RPC" PRIVATE_KEY="$$ORACLE_PK" ORACLE_ADDRESS="$$ORACLE_ADDR" AAPL_ADDRESS="$$AAPL_ADDR" MSFT_ADDRESS="$$MSFT_ADDR" ISP_MI_ADDRESS="$$ISP_MI_ADDR" node oracle-bot/bot.mjs --once > "$$LOG_DIR/oracle.log" 2>&1; then \
-			:; \
-		fi; \
+		RPC_URL="$$ORACLE_RPC" PRIVATE_KEY="$$ORACLE_PK" ORACLE_ADDRESS="$$ORACLE_ADDR" AAPL_ADDRESS="$$AAPL_ADDR" MSFT_ADDRESS="$$MSFT_ADDR" ISP_MI_ADDRESS="$$ISP_MI_ADDR" SYMBOLS="$$ORACLE_SYMBOLS" node oracle-bot/bot.mjs --once > "$$LOG_DIR/oracle.log" 2>&1 & \
+		ORACLE_PID="$$!"; \
 		progress 35 "Starting relayer on Sepolia..."; \
 		$(MAKE) --no-print-directory server\:sepolia > "$$LOG_DIR/relayer.log" 2>&1 & \
 		progress 60 "Starting Seta backend..."; \
