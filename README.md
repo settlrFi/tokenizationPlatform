@@ -4,11 +4,24 @@
 > Designed and maintained by **Manuel Naviglio** and **Francesco Tarantelli**.  
 > Website: [settlrfi.github.io](https://settlrfi.github.io/)
 
-Settlr is an open-source tokenization platform for regulated digital assets, designed as an end-to-end programmable market infrastructure for tokenized real-world assets. The system integrates compliance, issuance, and settlement into a single stack, with the goal of transforming fragmented post-trade workflows into atomic, T+0-capable capital-market rails. On the public site, Settlr is presented as an institutional infrastructure layer built around compliance-gated access, dual-signoff issuance, and atomic delivery-versus-payment settlement. :contentReference[oaicite:0]{index=0}
+Settlr is an open-source tokenization platform for regulated digital assets, designed as an end-to-end programmable market infrastructure for tokenized real-world assets. The system integrates compliance, issuance, and settlement into a unified stack, with the goal of transforming fragmented post-trade workflows into atomic, T+0-capable capital-market rails. Settlr is structured around compliance-gated access, dual-signoff issuance, and atomic delivery-versus-payment settlement.
 
-At the workflow level, the platform is organized around distinct institutional roles. Issuers initiate token creation, custodians confirm 1:1 reserve backing, and investors or dealers interact with the market through permissioned access controls. Market participation is gated through an on-chain compliance registry, so only approved identities can access issuance and trading flows. Once an issuance request is proposed by the issuer and validated by the custodian, asset and cash are settled simultaneously through atomic DvP logic with deterministic finality. :contentReference[oaicite:1]{index=1}
+The platform is organized around a set of clearly defined institutional and technical roles:
 
-More broadly, the architecture is meant to replace reconciliation-heavy coordination across separate systems with a shared on-chain transaction state. In the platform’s own “before vs after” description, traditional workflows rely on fragmented ledgers, delayed reconciliation, and intermediary layers, whereas the tokenized design aligns execution, ownership updates, compliance checks, and auditability within a common programmable environment. This is why the codebase should be read not just as a token issuance toolkit, but as a reference implementation of a broader market-structure design. :contentReference[oaicite:2]{index=2}
+- **Issuer** — proposes and manages the creation of tokenized assets.
+- **Custodian** — verifies that the underlying assets are properly held and confirms the reserve backing required for issuance.
+- **Investor / Dealer** — accesses the market through permissioned participation rules and interacts with issuance, trading, and redemption flows.
+- **Compliance layer** — controls access to the system by ensuring that only approved identities and eligible participants can operate on the platform.
+- **Oracle services** — provide external data and support pricing, validation, and policy enforcement where needed.
+- **Operator interface** — coordinates approvals, issuance, and market actions through the platform’s React/Vite dApp.
+- **Relayer / proxy-wallet stack** — supports gasless or abstracted transaction flows, improving usability and execution.
+- **Seta** — the embedded AI operator agent integrated into the dApp, designed to assist with operational workflows.
+
+Taken together, these components do not function as isolated modules, but as parts of a single programmable workflow in which compliance approval enables access, issuance depends on custodian confirmation, and settlement finalizes synchronized asset-and-cash transfers.
+
+At the workflow level, the platform is organized around distinct institutional roles. Issuers initiate token creation, custodians confirm 1:1 reserve backing, and investors or dealers interact with the market through permissioned access controls. Market participation is gated through an on-chain compliance registry, so only approved identities can access issuance and trading flows. Once an issuance request is proposed by the issuer and validated by the custodian, asset and cash are settled simultaneously through atomic DvP logic with deterministic finality. 
+
+More broadly, the architecture is meant to replace reconciliation-heavy coordination across separate systems with a shared on-chain transaction state. In the platform’s own “before vs after” description, traditional workflows rely on fragmented ledgers, delayed reconciliation, and intermediary layers, whereas the tokenized design aligns execution, ownership updates, compliance checks, and auditability within a common programmable environment. This is why the codebase should be read not just as a token issuance toolkit, but as a reference implementation of a broader market-structure design. 
 
 The current open-source stack includes:
 
