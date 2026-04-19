@@ -1,10 +1,16 @@
 # Tokenization Platform
 
 > **An open-source financial infrastructure project**  
-> Designed and maintained by **Manuel Naviglio** and **Francesco Tarantelli**
+> Designed and maintained by **Manuel Naviglio** and **Francesco Tarantelli**.  
+> Website: [settlrfi.github.io](https://settlrfi.github.io/)
 
+Settlr is an open-source tokenization platform for regulated digital assets, designed as an end-to-end programmable market infrastructure for tokenized real-world assets. The system integrates compliance, issuance, and settlement into a single stack, with the goal of transforming fragmented post-trade workflows into atomic, T+0-capable capital-market rails. On the public site, Settlr is presented as an institutional infrastructure layer built around compliance-gated access, dual-signoff issuance, and atomic delivery-versus-payment settlement. :contentReference[oaicite:0]{index=0}
 
-Open-source tokenization platform for regulated digital assets, with:
+At the workflow level, the platform is organized around distinct institutional roles. Issuers initiate token creation, custodians confirm 1:1 reserve backing, and investors or dealers interact with the market through permissioned access controls. Market participation is gated through an on-chain compliance registry, so only approved identities can access issuance and trading flows. Once an issuance request is proposed by the issuer and validated by the custodian, asset and cash are settled simultaneously through atomic DvP logic with deterministic finality. :contentReference[oaicite:1]{index=1}
+
+More broadly, the architecture is meant to replace reconciliation-heavy coordination across separate systems with a shared on-chain transaction state. In the platform’s own “before vs after” description, traditional workflows rely on fragmented ledgers, delayed reconciliation, and intermediary layers, whereas the tokenized design aligns execution, ownership updates, compliance checks, and auditability within a common programmable environment. This is why the codebase should be read not just as a token issuance toolkit, but as a reference implementation of a broader market-structure design. :contentReference[oaicite:2]{index=2}
+
+The current open-source stack includes:
 
 - upgradeable Solidity contracts
 - a React/Vite operator dApp
